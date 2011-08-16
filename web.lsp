@@ -1,9 +1,9 @@
 #!/usr/bin/newlisp
 ;; @module Web
-;; @author Jeff Ober <jeffober@gmail.com>
-;; @version 0.3.1 beta
-;; @location http://static.artfulcode.net/newlisp/web.lsp
-;; @package http://static.artfulcode.net/newlisp/web.qwerty
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
+;; @version 0.3.2
+;; @location http://www.ScruffyThinking.com/artful
+;; @package https://github.com/LifeZero/artful-newlisp/blob/master/web.qwerty
 ;; @description A collection of functions for writing web-based software.
 ;; <b>Features:</b>
 ;; <ul>
@@ -20,7 +20,8 @@
 ;; <b>Known issues</b>
 ;; <ul>
 ;;   <li>
-;;     When used in conjunction with the official @link http://newlisp.nfshost.com/code/modules/cgi.lsp.html CGI
+;;     When used in conjunction with the official 
+;;     @link http://newlisp.nfshost.com/code/modules/cgi.lsp.html CGI
 ;;     module, @link http://newlisp.nfshost.com/code/modules/cgi.lsp.html CGI must be loaded first. In the case of
 ;;     identical GET and POST parameters, the value is stored in GET, but the value will be POST. This
 ;;     is due to the fact that CGI stores both GET and POST in the same association list and overwrites
