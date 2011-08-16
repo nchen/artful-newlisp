@@ -1,0 +1,625 @@
+<!DOCTYPE HTML PUBLIC "4.01 Transitional"><html><title>MP</title><body><pre>
+<font color='#555555'>;; <font color='#308080'>@module</font> MP</font>
+<font color='#555555'>;; <font color='#308080'>@author</font> Jeff Ober &lt;jeffober@gmail.com&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@version</font> 1.1</font>
+<font color='#555555'>;; <font color='#308080'>@location</font> http://static.artfulcode.net/newlisp/mp.lsp</font>
+<font color='#555555'>;; <font color='#308080'>@package</font> http://static.artfulcode.net/newlisp/mp.qwerty</font>
+<font color='#555555'>;; <font color='#308080'>@description</font> Classes for multi-processing and synchronization (requires newlisp 10)</font>
+<font color='#555555'>;; Provides many classes for controlling access to resources as well as</font>
+<font color='#555555'>;; utilities for common multi-processing tasks. Requires newlisp 10 and the</font>
+<font color='#555555'>;; util module.</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;h4&gt;Version history&lt;/h4&gt;</font>
+<font color='#555555'>;; &lt;b&gt;1.1&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; MP:iter and MP:map both now check spawn returns for errors and re-throw them</font>
+<font color='#555555'>;; &amp;bull; MP:map and MP:iter now block in sleep, rather than sync, which uses *much* less cpu time</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; initial release (replaces locks module)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; MP: multi-processing utilities for newlisp.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'MP<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (MP:get-pid)</font>
+<font color='#555555'>;; &lt;p&gt;Returns the pid of the current process.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (MP:get-pid) => 16024</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>get-pid<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>sys-info</font> <font color='#665500'>6</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (MP:with-lock-held &lt;lock&gt; &lt;expr&gt; [&lt;expr&gt; ...])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;lock&gt; an instance of a locking class with an :acquire and :release method</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; one or more expressions to be evaluated</font>
+<font color='#555555'>;; &lt;p&gt;Evaluates one or more expressions with &lt;lock&gt; acquired. &lt;lock&gt; may be an</font>
+<font color='#555555'>;; instance of any class with an :acquire and :release method. MP:with-lock-held</font>
+<font color='#555555'>;; guarantees that the lock will be released, even if an error is thrown during</font>
+<font color='#555555'>;; evaluation of the body expressions. Errors thrown will be re-thrown after the</font>
+<font color='#555555'>;; lock is released. The value of the expression is the value of the last body</font>
+<font color='#555555'>;; form evaluated.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf lock (Lock))</font>
+<font color='#555555'>;; (MP:with-lock-held lock</font>
+<font color='#555555'>;;   (do stuff))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>with-lock-held<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>_inst <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font>_body <font color='#AA0000'>(</font><font color='#0000AA'>cons</font> <font color='#0000AA'>begin</font> <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font>_err <font color='#AA0000'>(</font>gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font>_res <font color='#AA0000'>(</font>gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>local</font> <font color='#AA0000'>(</font>_err _res<font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>:acquire _inst<font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> _err <font color='#AA0000'>(</font><font color='#0000AA'>catch</font> _body '_res<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>:release _inst<font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>if-not</font> _err
+        <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> _res<font color='#AA0000'>)</font>
+        _res<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (MP:wait &lt;fn-condition&gt; &lt;int-start&gt; &lt;int-max&gt; [&lt;int-timeout&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;fn-condition&gt; a predicate used to test state</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-start&gt; the initial sleep time (milliseconds)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-max&gt; the maximum sleep time (milliseconds)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-timeout&gt; the maximum number of milliseconds to wait for &lt;fn-condition&gt; to return true</font>
+<font color='#555555'>;; &lt;p&gt;Blocks until &lt;fn-condition&gt; returns true. Wait will poll &lt;fn-condition&gt;</font>
+<font color='#555555'>;; every &lt;int-start&gt; ms, growing every ten polling cycles up to &lt;int-max&gt; ms,</font>
+<font color='#555555'>;; up to an optional &lt;int-timeout&gt; ms. Returns true when the polling loop</font>
+<font color='#555555'>;; returns normally, nil when &lt;int-timeout&gt; (if present) was reached. Note that</font>
+<font color='#555555'>;; &lt;int-timeout&gt; will be approximately observed; it is affected by the current</font>
+<font color='#555555'>;; interval. If &lt;int-start&gt; and &lt;int-max&gt; are equal, no change in the polling</font>
+<font color='#555555'>;; interval will take place.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; ; Blocks until 'some-flag is set to true. Polls initially every 50ms,</font>
+<font color='#555555'>;; ; increasing to 500ms. After 5 seconds (5000 ms), returns even if</font>
+<font color='#555555'>;; ; 'some-flag is nil.</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; (MP:wait (fn () (true? some-flag)) 50 500 5000)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>wait condition start-interval max-interval timeout , waited result increase current<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> increase <font color='#AA0000'>(</font><font color='#0000AA'>ceil</font> <font color='#AA0000'>(</font><font color='#0000AA'>/</font> <font color='#AA0000'>(</font><font color='#0000AA'>-</font> max-interval start-interval<font color='#AA0000'>)</font> <font color='#665500'>10</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> current start-interval<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> waited <font color='#665500'>0</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>or</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> timeout <font color='#AA0000'>(</font><font color='#0000AA'>>=</font> waited timeout<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#555555'>; if timeout param present, check for timeout</font>
+             <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> result <font color='#AA0000'>(</font>condition<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#555555'>; gives us our return value</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font><font color='#0000AA'>mod</font> $idx <font color='#665500'>10</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> current increase<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> waited <font color='#AA0000'>(</font><font color='#0000AA'>sleep</font> current<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  result<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (MP:map &lt;fun&gt; &lt;seq&gt; [&lt;limit&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;fun&gt; a function to apply to each element of &lt;seq&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;seq&gt; a list</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;limit&gt; the max number of processes to start</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;timeout&gt; the (approximate) max time to wait for the process to complete</font>
+<font color='#555555'>;; &lt;p&gt;Maps &lt;fun&gt; over &lt;seq&gt;, bounding the number of running processes to</font>
+<font color='#555555'>;; &lt;limit&gt;.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (MP:map pow (sequence 0 4) 4)</font>
+<font color='#555555'>;; => (0 1 4 9 16)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>MP:map fun seq limit timeout , result mem <font color='#AA0000'>(</font>MP:wait-n <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>max-wait <font color='#665500'>500</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>increment <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Using an array makes symbol access faster</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> mem <font color='#AA0000'>(</font>make-array <font color='#AA0000'>(</font><font color='#0000AA'>length</font> seq<font color='#AA0000'>)</font> gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>elt seq<font color='#AA0000'>)</font>
+    <font color='#555555'>; Gradually increasing the sync timeout reduces polling overhead</font>
+    <font color='#555555'>; for long-running calculations.</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> limit
+      <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'><</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> <font color='#AA0000'>(</font><font color='#0000AA'>sync</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> limit<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'><</font> wait-n max-wait<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> wait-n <font color='#AA0000'>(</font><font color='#0000AA'>*</font> increment wait-n<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>sleep</font> wait-n<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>sync</font> <font color='#665500'>50</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#555555'>; Add a new child process</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>spawn</font> <font color='#AA0000'>(</font>mem $idx<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>fun elt<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Wait for remaining calculations to complete</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>sync</font> <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Get results and delete symbols used</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> result <font color='#AA0000'>(</font>MAIN:map <font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>array-list</font> mem<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Check for errors in results</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>res result<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>string?</font> res<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>starts-with</font> res <font color='#008800'>"ERR:"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{(ERR: user error : )+}</font> res <font color='#008800'>""</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>array-iter <font color='#0000AA'>delete</font> mem<font color='#AA0000'>)</font>
+  <font color='#555555'>; Return result</font>
+  result<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (MP:iter &lt;fun&gt; &lt;seq&gt; [&lt;limit&gt; [&lt;timeout&gt;]])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;fun&gt; a function to apply to each element of &lt;seq&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;seq&gt; a list</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;limit&gt; the max number of processes to start</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;timeout&gt; the (approximate) max time to wait for the process to complete</font>
+<font color='#555555'>;; &lt;p&gt;Iterates over &lt;seq&gt;, applying &lt;fun&gt; to each element. If &lt;limit&gt; is</font>
+<font color='#555555'>;; specified, will not start more than &lt;limit&gt; processes. Returns the value of</font>
+<font color='#555555'>;; the final iteration.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (MP:iter println (sequence 0 4) 4)</font>
+<font color='#555555'>;; 0</font>
+<font color='#555555'>;; 1</font>
+<font color='#555555'>;; 3</font>
+<font color='#555555'>;; 2</font>
+<font color='#555555'>;; 4</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>iter fun seq limit , mem check result <font color='#AA0000'>(</font>MP:wait-n <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>max-wait <font color='#665500'>500</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>increment <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Using an array makes symbol access faster</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> mem <font color='#AA0000'>(</font>make-array <font color='#AA0000'>(</font><font color='#0000AA'>length</font> seq<font color='#AA0000'>)</font> gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>elt seq<font color='#AA0000'>)</font>
+    <font color='#555555'>; Gradually increasing the sync timeout reduces polling overhead</font>
+    <font color='#555555'>; for long-running calculations.</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> limit
+      <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'><</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> <font color='#AA0000'>(</font><font color='#0000AA'>sync</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> limit<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'><</font> wait-n max-wait<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> wait-n <font color='#AA0000'>(</font><font color='#0000AA'>*</font> increment wait-n<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>sleep</font> wait-n<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>sync</font> <font color='#665500'>50</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#555555'>; Add a new child process</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>spawn</font> <font color='#AA0000'>(</font>mem $idx<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>fun elt<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Wait for remaining calculations to complete</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>sync</font> <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Check for errors in results</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>dotimes</font> <font color='#AA0000'>(</font>i <font color='#AA0000'>(</font><font color='#0000AA'>length</font> seq<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> check <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>nth</font> i mem<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>string?</font> check<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>starts-with</font> check <font color='#008800'>"ERR:"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{(ERR: user error : )+}</font> check <font color='#008800'>""</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>; Get results and delete symbols used</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> result <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>last</font> mem<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>array-iter <font color='#0000AA'>delete</font> mem<font color='#AA0000'>)</font>
+  result<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'MAIN<font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Semaphore: a synchronized counter that blocks when attempting to decrement</font>
+<font color='#555555'>;;; below zero. Also known as a counting semaphore. By default, newly created</font>
+<font color='#555555'>;;; Semaphores are initialized with a count of 1.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Semaphore &lt;int-initial&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-initial&gt; the initial value of the semaphore</font>
+<font color='#555555'>;; &lt;p&gt;Creates a synchronized counter that cannot drop below zero. Any attempt to</font>
+<font color='#555555'>;; do so will block until the counter has been incremented (released). A basic</font>
+<font color='#555555'>;; semaphore may count as high or low as desired; this is useful for protecting</font>
+<font color='#555555'>;; queues or stacks. By default, Semaphores are initialized with a value of 1.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf sem (Semaphore))</font>
+<font color='#555555'>;; (setf queue '())</font>
+<font color='#555555'>;; (dotimes (i 10)</font>
+<font color='#555555'>;;   (push i queue)</font>
+<font color='#555555'>;;   (:inc sem 1))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Semaphore:Semaphore <font color='#AA0000'>(</font>initial-value <font color='#665500'>1</font><font color='#AA0000'>)</font> , sem<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> sem <font color='#AA0000'>(</font><font color='#0000AA'>semaphore</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>semaphore</font> sem initial-value<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> sem<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:inc &lt;inst&gt; [&lt;int-amount&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Semaphore</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-amount&gt; the amount to increment; default is 1</font>
+<font color='#555555'>;; &lt;p&gt;Increments (releases) the Semaphore by &lt;int-amount&gt;.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Semaphore:inc inst <font color='#AA0000'>(</font>n <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>semaphore</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> n<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:dec &lt;inst&gt; [&lt;int-amount&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Semaphore</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-amount&gt; the amount to decrement; default is 1</font>
+<font color='#555555'>;; &lt;p&gt;Decrements (acquires) the Semaphore by &lt;int-amount&gt;.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Semaphore:dec inst <font color='#AA0000'>(</font>n <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>semaphore</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>-</font> n<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:count &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Semaphore</font>
+<font color='#555555'>;; &lt;p&gt;Returns the current count of the Semaphore.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Semaphore:count inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>semaphore</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:acquire &lt;inst&gt; [&lt;blocking&gt; [&lt;int-amount&gt;]])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Semaphore</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;blocking&gt; if true (default is true) blocks if Semaphore is held</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-amount&gt; the amount by which the Semaphore is to be decremented</font>
+<font color='#555555'>;; &lt;p&gt;Attempts to acquire the Semaphore. If &lt;blocking&gt; is true, :acquire will</font>
+<font color='#555555'>;; block until Semaphore becomes available. If &lt;blocking&gt; is nil, :acquire will</font>
+<font color='#555555'>;; attempt to acquire the Semaphore and return nil immediately if it is</font>
+<font color='#555555'>;; unavailable.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Semaphore:acquire inst <font color='#AA0000'>(</font>blocking <font color='#0000AA'>true</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>n <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>or</font> blocking <font color='#AA0000'>(</font><font color='#0000AA'>>=</font> n <font color='#AA0000'>(</font>:count inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:dec inst n<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:release &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Semaphore</font>
+<font color='#555555'>;; &lt;p&gt;Releases the Semaphore.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>setf</font> Semaphore:release Semaphore:inc<font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Share: a shared page in memory. Only integers, floats, or strings may be</font>
+<font color='#555555'>;;; stored. To store complex objects, use source and pack to first convert the</font>
+<font color='#555555'>;;; object to a string.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Share)</font>
+<font color='#555555'>;; &lt;p&gt;A Share wraps a single page in memory which may be used to store interger,</font>
+<font color='#555555'>;; float, or string values between processes. In order to store compound objects</font>
+<font color='#555555'>;; or lists, use source and/or pack to serialize the object first. Access to the</font>
+<font color='#555555'>;; Share between different processes must be protected with locking</font>
+<font color='#555555'>;; mechanisms.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Share:Share<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>share</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:set &lt;inst&gt; &lt;value&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Share</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;value&gt; the new value for the Share</font>
+<font color='#555555'>;; &lt;p&gt;Sets the Share's value to &lt;value&gt;.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Share:set inst value<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>share</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> value<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:get &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Share</font>
+<font color='#555555'>;; &lt;p&gt;Gets the value of the Share.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Share:get inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>share</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Synchronized: a Share that has access protected with a semaphore.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Synchronized [&lt;initial-value&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;initial-value&gt; the initial value, if any</font>
+<font color='#555555'>;; &lt;p&gt;Synchronized wraps a Share and protects access to it with a Semaphore.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Synchronized:Synchronized &lt;initial-value&gt;<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> mem <font color='#AA0000'>(</font>Share<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> initial-value
+    <font color='#AA0000'>(</font>:set mem initial-value<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> mem <font color='#AA0000'>(</font>Semaphore <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:get &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Synchronized</font>
+<font color='#555555'>;; &lt;p&gt;Gets the current value of the Synchronized instance. Will block if another</font>
+<font color='#555555'>;; process is currently getting or setting the value.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Synchronized:get inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>MP:with-lock-held <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:set &lt;inst&gt; &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Synchronized</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; the new value</font>
+<font color='#555555'>;; &lt;p&gt;Sets the value of the Synchronized share. If the new value is an</font>
+<font color='#555555'>;; expression, it will be evaluated with the variable $0 set to the old value</font>
+<font color='#555555'>;; of the share. This is necessary to prevent a deadlock when dealing with</font>
+<font color='#555555'>;; self-referential values.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf mem (Synchronized))</font>
+<font color='#555555'>;; (:set mem 10)</font>
+<font color='#555555'>;; => 10</font>
+<font color='#555555'>;; (:set mem (+ 10 $0))</font>
+<font color='#555555'>;; => 20</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>Synchronized:set<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>_sync_inst <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>_sync_expr <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>MP:with-lock-held <font color='#AA0000'>(</font>_sync_inst <font color='#665500'>2</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> $0 <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>_sync_inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>_sync_inst <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> _sync_expr<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Lock: a binary semaphore. It is an error for a different process than that</font>
+<font color='#555555'>;;; which acquires the lock to release the lock.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Lock)</font>
+<font color='#555555'>;; &lt;p&gt;A Lock is a binary semaphore (or mutual exclusion lock) that may be set to</font>
+<font color='#555555'>;; either 1 (released) or 0 (acquired). It is an error for a process to release</font>
+<font color='#555555'>;; a Lock it has not acquired.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Lock:Lock<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Semaphore<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Synchronized<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:acquire &lt;inst&gt; [&lt;blocking&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Lock</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;blocking&gt; whether to block if the Lock is not available (default is true)</font>
+<font color='#555555'>;; &lt;p&gt;Attempts to acquire the Lock, blocking until it becomes available if</font>
+<font color='#555555'>;; &lt;blocking&gt; is true.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Lock:acquire inst <font color='#AA0000'>(</font>blocking <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font>:acquire <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> blocking<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>MP:get-pid<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:release &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Lock</font>
+<font color='#555555'>;; &lt;p&gt;Releases the Lock.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Lock:release inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font>MP:get-pid<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:release <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#008800'>"unlocking process does not match owner"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; RLock: identical to a Lock except that the locking process may acquire the</font>
+<font color='#555555'>;;; lock multiple times. The number of acquires must be >= the number of</font>
+<font color='#555555'>;;; releases.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (RLock)</font>
+<font color='#555555'>;; &lt;p&gt;An RLock is a Lock that may be acquired multiple times by the same</font>
+<font color='#555555'>;; process. This is useful to lock various inter-dependent functions in the same</font>
+<font color='#555555'>;; process with a single lock. Observes the invariant # acquires >= # releases.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:RLock<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Semaphore<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Synchronized<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Synchronized<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:owner inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:counter inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>3</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:held? inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font>:count <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:process-is-owner? inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font>MP:get-pid<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>:owner inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:inc inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>+</font> $0 <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:dec inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>-</font> $0 <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:acquire &lt;inst&gt; [&lt;blocking&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of RLock</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;blocking&gt; whether to block if the RLock is not available (default is true)</font>
+<font color='#555555'>;; &lt;p&gt;Attempts to acquire the RLock, blocking until it becomes available if</font>
+<font color='#555555'>;; &lt;blocking&gt; is true.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:acquire inst <font color='#AA0000'>(</font>blocking <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font>:held? inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>:process-is-owner? inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:inc inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font>:acquire <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font> <font color='#665500'>1</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>:owner inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>MP:get-pid<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:release &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of RLock</font>
+<font color='#555555'>;; &lt;p&gt;Releases the RLock.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>RLock:release inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font>:held? inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#008800'>"lock is not held"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font>:process-is-owner? inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#008800'>"owner and releasing process do not match"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:dec inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:release <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Event: a simple mechanism to signal one or more waiting processes that some</font>
+<font color='#555555'>;;; condition has been met.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Event)</font>
+<font color='#555555'>;; &lt;p&gt;An Event is a simple mechanism for synchronization. It allows multiple</font>
+<font color='#555555'>;; processes to block until a controlling process issues a signal to</font>
+<font color='#555555'>;; unblock.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Event:Event , mem<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Synchronized <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:reset inst)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Event</font>
+<font color='#555555'>;; &lt;p&gt;Resets this Event. Does &lt;no&gt; checking to see if any processes are</font>
+<font color='#555555'>;; waiting on this event. Those processes will remain locked until this</font>
+<font color='#555555'>;; Event is signaled again.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Event:reset inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:signaled? inst)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Event</font>
+<font color='#555555'>;; &lt;p&gt;Returns true if this Event has already been signaled.</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Event:signaled? inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#665500'>1</font> <font color='#AA0000'>(</font>:get <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:signal inst)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Event</font>
+<font color='#555555'>;; &lt;p&gt;Signals &lt;inst&gt; and unblocks any processes waiting on this Event.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Event:signal inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:set <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:wait &lt;inst&gt; [&lt;int-timeout&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Event</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-timeout&gt; the maximum number of milliseconds to wait</font>
+<font color='#555555'>;; &lt;p&gt;Blocks until &lt;inst&gt; is signaled or &lt;int-timeout&gt;, if present, expires.</font>
+<font color='#555555'>;; Returns true when exiting normally, nil if wait times out.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Event:wait inst timeout<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font>:signaled? inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>MP:wait <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>:signaled? inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#665500'>50</font> <font color='#665500'>500</font> timeout<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Pipe: a one-way communications pipe.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Pipe [&lt;in&gt; &lt;out&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;in&gt; an in-channel of an existing pipe</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;out&gt; an out-channel of an existing pipe</font>
+<font color='#555555'>;; &lt;p&gt;A Pipe is a one-way communcations channel. If &lt;in&gt; and &lt;out&gt; are supplied,</font>
+<font color='#555555'>;; an existing pipe (such as the result of the pipe function) may be used.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:Pipe in out<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> in out<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#0000AA'>set</font> '<font color='#AA0000'>(</font>in out<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>pipe</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> in out<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:in inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:out inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:send &lt;inst&gt; &lt;msg&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Pipe</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;msg&gt; the message to send</font>
+<font color='#555555'>;; &lt;p&gt;Sends a message along the Pipe. Returns the number of bytes sent</font>
+<font color='#555555'>;; (including message encoding).&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf p (Pipe))</font>
+<font color='#555555'>;; (:send p "Hello world.")</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:send inst msg , expr<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> expr msg<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> msg <font color='#AA0000'>(</font><font color='#0000AA'>source</font> 'expr<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> <font color='#AA0000'>(</font>:out inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#008800'>"&lt;msg&gt;"</font> msg <font color='#008800'>"&lt;/msg&gt;"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:peek &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Pipe</font>
+<font color='#555555'>;; &lt;p&gt;Returns the number of bytes ready for reading on Pipe. This does not</font>
+<font color='#555555'>;; correspond directly with the size of the message (extra data is send with</font>
+<font color='#555555'>;; the message).</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:peek inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>peek</font> <font color='#AA0000'>(</font>:in inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:has-messages? &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Pipe</font>
+<font color='#555555'>;; &lt;p&gt;Returns true if there is a message ready to be read from the Pipe.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:has-messages? inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>not</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font>:peek inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:receive &lt;inst&gt; [&lt;block&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Pipe</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;block&gt; when true, blocks until a message is available on the Pipe</font>
+<font color='#555555'>;; &lt;p&gt;Returns the next message on the Pipe. By default, blocks until the next</font>
+<font color='#555555'>;; message is available.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:receive inst <font color='#AA0000'>(</font>block <font color='#0000AA'>true</font><font color='#AA0000'>)</font> , msg buf has-messages expr<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> has-messages <font color='#AA0000'>(</font>:has-messages? inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>or</font> has-messages <font color='#555555'>; there is a message waiting</font>
+            <font color='#AA0000'>(</font><font color='#0000AA'>and</font> block <font color='#AA0000'>(</font><font color='#0000AA'>not</font> has-messages<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#555555'>; no messages but we will wait</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> msg <font color='#008800'>""</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>ends-with</font> msg <font color='#008800'>"&lt;/msg&gt;"</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>read-buffer</font> <font color='#AA0000'>(</font>:in inst<font color='#AA0000'>)</font> buf <font color='#665500'>4096</font> <font color='#008800'>"&lt;/msg&gt;"</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> msg buf<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> msg <font color='#AA0000'>(</font><font color='#0000AA'>slice</font> msg <font color='#665500'>5</font> <font color='#AA0000'>(</font><font color='#0000AA'>-</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> msg<font color='#AA0000'>)</font> <font color='#665500'>5</font> <font color='#665500'>6</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    
+    <font color='#555555'>; eval msg in 'MAIN to work-around source/eval-string bug with FOOP contexts</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'MAIN<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>eval-string</font> msg<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'Pipe<font color='#AA0000'>)</font>
+    
+    expr<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:close &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Pipe</font>
+<font color='#555555'>;; &lt;p&gt;Closes the read and write handles for this Pipe.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Pipe:close inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>close</font> <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>close</font> <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Channel: a two-way communcations channel using Pipes.</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Channel)</font>
+<font color='#555555'>;; &lt;p&gt;Creates a two-way communcations channel using Pipes. Channels have two</font>
+<font color='#555555'>;; Pipes, a parent and a child, each of which may be given to separate processes</font>
+<font color='#555555'>;; to communicate back and forth using the standard Pipe syntax.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf ch (Channel))</font>
+<font color='#555555'>;; (map set '(parent child) (:pipes ch))</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; ; in parent, send a message</font>
+<font color='#555555'>;; (:send parent "Hello child.")</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; ; fork child, receive the message, and send a response</font>
+<font color='#555555'>;; (fork</font>
+<font color='#555555'>;;  (begin</font>
+<font color='#555555'>;;    (println "Child received: " (:receive child))</font>
+<font color='#555555'>;;    (:send child "Hello yourself!")))</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; ; in the parent process, block until a response becomes available</font>
+<font color='#555555'>;; (setf resp (:receive parent))</font>
+<font color='#555555'>;; (println "Parent received: " resp)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Channel:Channel , parent child<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> parent <font color='#AA0000'>(</font><font color='#0000AA'>pipe</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> child <font color='#AA0000'>(</font><font color='#0000AA'>pipe</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Pipe <font color='#AA0000'>(</font>parent <font color='#665500'>0</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>child <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Pipe <font color='#AA0000'>(</font>child <font color='#665500'>0</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>parent <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:pipes &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Channel</font>
+<font color='#555555'>;; &lt;p&gt;Returns a list of the parent and child pipes. Equivalent to</font>
+<font color='#555555'>;; (list (:parent inst) (:child inst)).&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Channel:pipes inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font>:parent inst<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>:child inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:parent &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Channel</font>
+<font color='#555555'>;; &lt;p&gt;Returns the parent Pipe.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Channel:parent inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:child &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Channel</font>
+<font color='#555555'>;; &lt;p&gt;Returns the child Pipe.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Channel:child inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;;;=============================================================================</font>
+<font color='#555555'>;;; Queue: a synchronized FIFO queue. Objects may be of any size (share is not</font>
+<font color='#555555'>;;; used).</font>
+<font color='#555555'>;;;=============================================================================</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Queue [&lt;size&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;size&gt; the maximum size for the queue (no max if nil)</font>
+<font color='#555555'>;; &lt;p&gt;A Queue is a synchronized first in, first out list of items that is safe</font>
+<font color='#555555'>;; for use in multiple processes. Object size is not restricted as when using</font>
+<font color='#555555'>;; a shared page of memory. A Queue must be closed when no longer needed using</font>
+<font color='#555555'>;; the :close method.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:Queue size<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Pipe<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Semaphore<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>when</font> size <font color='#AA0000'>(</font>Semaphore size<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:comm inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:lock inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>2</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:counter inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>3</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:count &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Queue</font>
+<font color='#555555'>;; &lt;p&gt;Returns the number of items currently in the queue.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:count inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:count <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:inc inst<font color='#AA0000'>)</font>
+  <font color='#008800'>"Records an increase in the size of the queue."</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:dec <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:dec inst<font color='#AA0000'>)</font>
+  <font color='#008800'>"Records a decrease in the size of the queue."</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:inc <font color='#AA0000'>(</font>:counter inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:put &lt;inst&gt; &lt;expr&gt; [&lt;block&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Queue</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; the object to be added</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;block&gt; when true, blocks until space is available in the queue</font>
+<font color='#555555'>;; &lt;p&gt;Adds &lt;expr&gt; to the Queue, blocking by default. Returns true when the item</font>
+<font color='#555555'>;; was added. If &lt;block&gt; is nil, returns nil when the Queue is full.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf q (Queue 4))</font>
+<font color='#555555'>;; (dotimes (i 5)</font>
+<font color='#555555'>;;   (if (:put q i nil) (print i)))</font>
+<font color='#555555'>;; => 0123</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:put inst expr <font color='#AA0000'>(</font>block <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>or</font> block <font color='#AA0000'>(</font><font color='#0000AA'>not</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font>:count inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:inc inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>:send <font color='#AA0000'>(</font>:comm inst<font color='#AA0000'>)</font> expr<font color='#AA0000'>)</font>
+    <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:get &lt;inst&gt; [&lt;block&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Queue</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;block&gt; when true, blocks until an item is available from the queue</font>
+<font color='#555555'>;; &lt;p&gt;Pulls the next item off of the Queue. If &lt;block&gt; is nil, returns nil when</font>
+<font color='#555555'>;; no item is available. Otherwise, blocks until one becomes available.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:get inst <font color='#AA0000'>(</font>block <font color='#0000AA'>true</font><font color='#AA0000'>)</font> , msg<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>MP:with-lock-held <font color='#AA0000'>(</font>:lock inst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> msg <font color='#AA0000'>(</font>:receive <font color='#AA0000'>(</font>:comm inst<font color='#AA0000'>)</font> block<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> msg
+    <font color='#AA0000'>(</font>:dec inst<font color='#AA0000'>)</font>
+    msg<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:close &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Queue</font>
+<font color='#555555'>;; &lt;p&gt;Closes the Queue and removes its temporary files.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Queue:close inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:close <font color='#AA0000'>(</font>:comm inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+
+
+
+
+
+
+
+</pre><center><font face='Arial' size='-3' color='#666666'>syntax highlighting with <a href="http://newlisp.org">newLISP</a>&nbsp;and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a></font></center></body></html>

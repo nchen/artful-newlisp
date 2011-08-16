@@ -1,0 +1,125 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>memcached.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>memcached.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="memcached.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;memcached</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>0.3<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/memcached.lsp">http://static.artfulcode.net/newlisp/memcached.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/memcached.qwerty<br/>
+<p>Interface to libmemcached (http://tangent.org/552/libmemcached.html) (updated for newlisp 10)</p>
+ <p>This module is a work-in-progress. Currently implemented functions work (or at least they
+ appear to). The full range of functionality is not nearly implemented, but it works well enough
+ to allocate, connect, get/set keys, and disconnect/deallocate.</p>
+ <h4>External libraries</h4>
+ &bull;
+ <a href="http://tangent.org/552/libmemcached.html">libmemcached<br></a>  &bull;
+ <a href="http://www.danga.com/memcached/download.bml">memcached<br></a>  &bull;
+ <a href="http://monkey.org/~provos/libevent/">libevent&nbsp;(required&nbsp;by&nbsp;memcached)</a> <br/><br/>
+ <h4>Version history</h4>
+ <b>0.3</b>
+ &bull; updated for newlisp 10
+<br/><br/>
+ <b>0.2</b>
+ &bull; cleaned up some functions
+ &bull; added <tt>get-keys</tt>
+<br/><br/>
+ <b>0.1</b>
+ &bull; development release
+<br/><br/>
+<b>example:</b><blockquote><pre> (memcached:init)
+ (memcached:add-server "localhost" 8080)
+ (memcached:set-key "foo" "bar" 30)
+ (memcached:get-key "foo") ; within 30 seconds
+ =&gt; "bar"
+ (sleep 30000) ; wait 30 seconds
+ (memcached:get-key "foo") ; after 30+ seconds
+ =&gt; nil
+ (memcached:disconnect)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_init"></a><h3><font color=#CC0000>memcached:init</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:init</font>)</b><br/>
+ <p>Initializes the <tt>memcached</tt> module.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_disconnect"></a><h3><font color=#CC0000>memcached:disconnect</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:disconnect</font>)</b><br/>
+ <p>Disconnects from all servers and deallocates libmemcached structures.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_add-server"></a><h3><font color=#CC0000>memcached:add-server</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:add-server</font> <em>str-host</em> <em>int-port</em>)</b><br/>
+<b>parameter: </b><em>str-host</em> - the hostname; required<br/>
+<b>parameter: </b><em>int-port</em> - the host port; required<br/>
+ <p>Adds a server to be used as a source of cached data. Returns true or nil,
+ depending on whether the server was successfully added or not.</p>
+<b>example:</b><blockquote><pre> (memcached:add-server "localhost" 8000)
+ =&gt; true</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_result"></a><h3><font color=#CC0000>memcached:result</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:result</font>)</b><br/>
+ <p>Returns the result or error from the last operation.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_set-key"></a><h3><font color=#CC0000>memcached:set-key</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:set-key</font> <em>str-key</em> <em>expr-value</em> [<em>int-expiration</em>])</b><br/>
+<b>parameter: </b><em>str-key</em> - unique key to store <em>expr-value</em> under; required<br/>
+<b>parameter: </b><em>str-expr</em> - value to store under <em>str-key</em>; required<br/>
+<b>parameter: </b><em>int-expiration</em> - seconds until <em>str-key</em> will expire; optional<br/>
+ <p>Sets <em>str-key</em> to <em>str-expr</em> on the memcached server. <em>str-expr</em> will be serialized
+ using <tt>string</tt>. Keys that already exist are overwritten. Returns true for success,
+ nil for failure.</p>
+<b>example:</b><blockquote><pre> (memcached:set-key "foo" "bar" 30) ; sets "foo" to "bar" for 30 seconds
+ =&gt; true</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_get-key"></a><h3><font color=#CC0000>memcached:get-key</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:get-key</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - the key to retrieve; required<br/>
+ <p>Retrieves the value associated with <em>str-key</em> from the memcached server. If the
+ key does not exist or has expired, evaluates to nil. Otherwise, the string value
+ is returned.</p>
+<b>example:</b><blockquote><pre> (memcached:set-key "foo" '("bar" "baz" "bat") (* 60 60))
+ =&gt; true
+ 
+ (memcached:get-key "foo")
+ =&gt; "(\"bar\" \"baz\" \"bat\")"
+ 
+ (let ((res (memcached:get-key "foo")))
+   (if res (eval-string (string "'" res)))) ; evaluate quoted
+ =&gt; ("bar" "baz" "bat")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="memcached_get-keys"></a><h3><font color=#CC0000>memcached:get-keys</font></h3>
+<b>syntax: (<font color=#CC0000>memcached:get-keys</font> <em>list-keys</em>)</b><br/>
+<b>parameter: </b><em>list-keys</em> - a list of strings<br/>
+ <p>Fetches an association list of '(key value) pairs from the
+ server.  Invalid or expired values return nil.</p>
+<b>example:</b><blockquote><pre> (memcached:set-key "foo" "bar" 300)
+ =&gt; "bar"
+ (memcached:set-key "baz" "bat" 300)
+ =&gt; "bat"
+ (memcached:set-key "asdf" "qwerty" 300)
+ =&gt; "qwerty"
+ 
+ (memcached:get-keys '("foo" "baz" "asdf")
+ =&gt; (("foo" "bar") ("baz" "bat") ("asdf" "qwerty"))
+ 
+ (memcached:get-keys '("foo" "invalid" "expired"))
+ =&gt; (("foo" "bar") ("invalid" nil) ("expired" nil))</pre></blockquote>
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

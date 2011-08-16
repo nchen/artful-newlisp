@@ -1,0 +1,436 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>mp.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>mp.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="mp.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;MP</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/mp.lsp">http://static.artfulcode.net/newlisp/mp.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/mp.qwerty<br/>
+<p>Classes for multi-processing and synchronization (requires newlisp 10)</p>
+ Provides many classes for controlling access to resources as well as
+ utilities for common multi-processing tasks. Requires newlisp 10 and the
+ util module.
+<br/><br/>
+ <h4>Version history</h4>
+ <b>1.1</b>
+ &bull; MP:iter and MP:map both now check spawn returns for errors and re-throw them
+ &bull; MP:map and MP:iter now block in sleep, rather than sync, which uses *much* less cpu time
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release (replaces locks module)
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="MP_get-pid"></a><h3><font color=#CC0000>MP:get-pid</font></h3>
+<b>syntax: (<font color=#CC0000>MP:get-pid</font>)</b><br/>
+ <p>Returns the pid of the current process.</p>
+<b>example:</b><blockquote><pre> (MP:get-pid) =&gt; 16024</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="MP_with-lock-held"></a><h3><font color=#CC0000>MP:with-lock-held</font></h3>
+<b>syntax: (<font color=#CC0000>MP:with-lock-held</font> <em>lock</em> <em>expr</em> [<em>expr</em> ...])</b><br/>
+<b>parameter: </b><em>lock</em> - an instance of a locking class with an :acquire and :release method<br/>
+<b>parameter: </b><em>expr</em> - one or more expressions to be evaluated<br/>
+ <p>Evaluates one or more expressions with <em>lock</em> acquired. <em>lock</em> may be an
+ instance of any class with an :acquire and :release method. MP:with-lock-held
+ guarantees that the lock will be released, even if an error is thrown during
+ evaluation of the body expressions. Errors thrown will be re-thrown after the
+ lock is released. The value of the expression is the value of the last body
+ form evaluated.</p>
+<b>example:</b><blockquote><pre> (setf lock (Lock))
+ (MP:with-lock-held lock
+   (do stuff))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="MP_wait"></a><h3><font color=#CC0000>MP:wait</font></h3>
+<b>syntax: (<font color=#CC0000>MP:wait</font> <em>fn-condition</em> <em>int-start</em> <em>int-max</em> [<em>int-timeout</em>])</b><br/>
+<b>parameter: </b><em>fn-condition</em> - a predicate used to test state<br/>
+<b>parameter: </b><em>int-start</em> - the initial sleep time (milliseconds)<br/>
+<b>parameter: </b><em>int-max</em> - the maximum sleep time (milliseconds)<br/>
+<b>parameter: </b><em>int-timeout</em> - the maximum number of milliseconds to wait for <em>fn-condition</em> to return true<br/>
+ <p>Blocks until <em>fn-condition</em> returns true. Wait will poll <em>fn-condition</em>
+ every <em>int-start</em> ms, growing every ten polling cycles up to <em>int-max</em> ms,
+ up to an optional <em>int-timeout</em> ms. Returns true when the polling loop
+ returns normally, nil when <em>int-timeout</em> (if present) was reached. Note that
+ <em>int-timeout</em> will be approximately observed; it is affected by the current
+ interval. If <em>int-start</em> and <em>int-max</em> are equal, no change in the polling
+ interval will take place.</p>
+<b>example:</b><blockquote><pre> ; Blocks until 'some-flag is set to true. Polls initially every 50ms,
+ ; increasing to 500ms. After 5 seconds (5000 ms), returns even if
+ ; 'some-flag is nil.
+ 
+ (MP:wait (fn () (true? some-flag)) 50 500 5000)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="MP_map"></a><h3><font color=#CC0000>MP:map</font></h3>
+<b>syntax: (<font color=#CC0000>MP:map</font> <em>fun</em> <em>seq</em> [<em>limit</em>])</b><br/>
+<b>parameter: </b><em>fun</em> - a function to apply to each element of <em>seq</em><br/>
+<b>parameter: </b><em>seq</em> - a list<br/>
+<b>parameter: </b><em>limit</em> - the max number of processes to start<br/>
+<b>parameter: </b><em>timeout</em> - the (approximate) max time to wait for the process to complete<br/>
+ <p>Maps <em>fun</em> over <em>seq</em>, bounding the number of running processes to
+ <em>limit</em>.</p>
+<b>example:</b><blockquote><pre> (MP:map pow (sequence 0 4) 4)
+ =&gt; (0 1 4 9 16)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="MP_iter"></a><h3><font color=#CC0000>MP:iter</font></h3>
+<b>syntax: (<font color=#CC0000>MP:iter</font> <em>fun</em> <em>seq</em> [<em>limit</em> [<em>timeout</em>]])</b><br/>
+<b>parameter: </b><em>fun</em> - a function to apply to each element of <em>seq</em><br/>
+<b>parameter: </b><em>seq</em> - a list<br/>
+<b>parameter: </b><em>limit</em> - the max number of processes to start<br/>
+<b>parameter: </b><em>timeout</em> - the (approximate) max time to wait for the process to complete<br/>
+ <p>Iterates over <em>seq</em>, applying <em>fun</em> to each element. If <em>limit</em> is
+ specified, will not start more than <em>limit</em> processes. Returns the value of
+ the final iteration.</p>
+<b>example:</b><blockquote><pre> (MP:iter println (sequence 0 4) 4)
+ 0
+ 1
+ 3
+ 2
+ 4</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_Semaphore"></a><h3><font color=#CC0000>Semaphore</font></h3>
+<b>syntax: (<font color=#CC0000>Semaphore</font> <em>int-initial</em>)</b><br/>
+<b>parameter: </b><em>int-initial</em> - the initial value of the semaphore<br/>
+ <p>Creates a synchronized counter that cannot drop below zero. Any attempt to
+ do so will block until the counter has been incremented (released). A basic
+ semaphore may count as high or low as desired; this is useful for protecting
+ queues or stacks. By default, Semaphores are initialized with a value of 1.</p>
+<b>example:</b><blockquote><pre> (setf sem (Semaphore))
+ (setf queue '())
+ (dotimes (i 10)
+   (push i queue)
+   (:inc sem 1))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_inc"></a><h3><font color=#CC0000>:inc</font></h3>
+<b>syntax: (<font color=#CC0000>:inc</font> <em>inst</em> [<em>int-amount</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Semaphore<br/>
+<b>parameter: </b><em>int-amount</em> - the amount to increment; default is 1<br/>
+ <p>Increments (releases) the Semaphore by <em>int-amount</em>.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_dec"></a><h3><font color=#CC0000>:dec</font></h3>
+<b>syntax: (<font color=#CC0000>:dec</font> <em>inst</em> [<em>int-amount</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Semaphore<br/>
+<b>parameter: </b><em>int-amount</em> - the amount to decrement; default is 1<br/>
+ <p>Decrements (acquires) the Semaphore by <em>int-amount</em>.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_count"></a><h3><font color=#CC0000>:count</font></h3>
+<b>syntax: (<font color=#CC0000>:count</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Semaphore<br/>
+ <p>Returns the current count of the Semaphore.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_acquire"></a><h3><font color=#CC0000>:acquire</font></h3>
+<b>syntax: (<font color=#CC0000>:acquire</font> <em>inst</em> [<em>blocking</em> [<em>int-amount</em>]])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Semaphore<br/>
+<b>parameter: </b><em>blocking</em> - if true (default is true) blocks if Semaphore is held<br/>
+<b>parameter: </b><em>int-amount</em> - the amount by which the Semaphore is to be decremented<br/>
+ <p>Attempts to acquire the Semaphore. If <em>blocking</em> is true, :acquire will
+ block until Semaphore becomes available. If <em>blocking</em> is nil, :acquire will
+ attempt to acquire the Semaphore and return nil immediately if it is
+ unavailable.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_release"></a><h3><font color=#CC0000>:release</font></h3>
+<b>syntax: (<font color=#CC0000>:release</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Semaphore<br/>
+ <p>Releases the Semaphore.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Share"></a><h3><font color=#CC0000>Share</font></h3>
+<b>syntax: (<font color=#CC0000>Share</font>)</b><br/>
+ <p>A Share wraps a single page in memory which may be used to store interger,
+ float, or string values between processes. In order to store compound objects
+ or lists, use source and/or pack to serialize the object first. Access to the
+ Share between different processes must be protected with locking
+ mechanisms.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_set"></a><h3><font color=#CC0000>:set</font></h3>
+<b>syntax: (<font color=#CC0000>:set</font> <em>inst</em> <em>value</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Share<br/>
+<b>parameter: </b><em>value</em> - the new value for the Share<br/>
+ <p>Sets the Share's value to <em>value</em>.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_get"></a><h3><font color=#CC0000>:get</font></h3>
+<b>syntax: (<font color=#CC0000>:get</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Share<br/>
+ <p>Gets the value of the Share.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Synchronized"></a><h3><font color=#CC0000>Synchronized</font></h3>
+<b>syntax: (<font color=#CC0000>Synchronized</font> [<em>initial-value</em>])</b><br/>
+<b>parameter: </b><em>initial-value</em> - the initial value, if any<br/>
+ <p>Synchronized wraps a Share and protects access to it with a Semaphore.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_get"></a><h3><font color=#CC0000>:get</font></h3>
+<b>syntax: (<font color=#CC0000>:get</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Synchronized<br/>
+ <p>Gets the current value of the Synchronized instance. Will block if another
+ process is currently getting or setting the value.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_set"></a><h3><font color=#CC0000>:set</font></h3>
+<b>syntax: (<font color=#CC0000>:set</font> <em>inst</em> <em>expr</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Synchronized<br/>
+<b>parameter: </b><em>expr</em> - the new value<br/>
+ <p>Sets the value of the Synchronized share. If the new value is an
+ expression, it will be evaluated with the variable $0 set to the old value
+ of the share. This is necessary to prevent a deadlock when dealing with
+ self-referential values.</p>
+<b>example:</b><blockquote><pre> (setf mem (Synchronized))
+ (:set mem 10)
+ =&gt; 10
+ (:set mem (+ 10 $0))
+ =&gt; 20</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_Lock"></a><h3><font color=#CC0000>Lock</font></h3>
+<b>syntax: (<font color=#CC0000>Lock</font>)</b><br/>
+ <p>A Lock is a binary semaphore (or mutual exclusion lock) that may be set to
+ either 1 (released) or 0 (acquired). It is an error for a process to release
+ a Lock it has not acquired.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_acquire"></a><h3><font color=#CC0000>:acquire</font></h3>
+<b>syntax: (<font color=#CC0000>:acquire</font> <em>inst</em> [<em>blocking</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Lock<br/>
+<b>parameter: </b><em>blocking</em> - whether to block if the Lock is not available (default is true)<br/>
+ <p>Attempts to acquire the Lock, blocking until it becomes available if
+ <em>blocking</em> is true.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_release"></a><h3><font color=#CC0000>:release</font></h3>
+<b>syntax: (<font color=#CC0000>:release</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Lock<br/>
+ <p>Releases the Lock.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_RLock"></a><h3><font color=#CC0000>RLock</font></h3>
+<b>syntax: (<font color=#CC0000>RLock</font>)</b><br/>
+ <p>An RLock is a Lock that may be acquired multiple times by the same
+ process. This is useful to lock various inter-dependent functions in the same
+ process with a single lock. Observes the invariant # acquires >= # releases.</p>
+
+
+
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_acquire"></a><h3><font color=#CC0000>:acquire</font></h3>
+<b>syntax: (<font color=#CC0000>:acquire</font> <em>inst</em> [<em>blocking</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of RLock<br/>
+<b>parameter: </b><em>blocking</em> - whether to block if the RLock is not available (default is true)<br/>
+ <p>Attempts to acquire the RLock, blocking until it becomes available if
+ <em>blocking</em> is true.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_release"></a><h3><font color=#CC0000>:release</font></h3>
+<b>syntax: (<font color=#CC0000>:release</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of RLock<br/>
+ <p>Releases the RLock.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Event"></a><h3><font color=#CC0000>Event</font></h3>
+<b>syntax: (<font color=#CC0000>Event</font>)</b><br/>
+ <p>An Event is a simple mechanism for synchronization. It allows multiple
+ processes to block until a controlling process issues a signal to
+ unblock.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_reset"></a><h3><font color=#CC0000>:reset</font></h3>
+<b>syntax: (<font color=#CC0000>:reset</font> inst)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Event<br/>
+ <p>Resets this Event. Does <em>no</em> checking to see if any processes are
+ waiting on this event. Those processes will remain locked until this
+ Event is signaled again.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_signaled?"></a><h3><font color=#CC0000>:signaled?</font></h3>
+<b>syntax: (<font color=#CC0000>:signaled?</font> inst)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Event<br/>
+ <p>Returns true if this Event has already been signaled.
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_signal"></a><h3><font color=#CC0000>:signal</font></h3>
+<b>syntax: (<font color=#CC0000>:signal</font> inst)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Event<br/>
+ <p>Signals <em>inst</em> and unblocks any processes waiting on this Event.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_wait"></a><h3><font color=#CC0000>:wait</font></h3>
+<b>syntax: (<font color=#CC0000>:wait</font> <em>inst</em> [<em>int-timeout</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Event<br/>
+<b>parameter: </b><em>int-timeout</em> - the maximum number of milliseconds to wait<br/>
+ <p>Blocks until <em>inst</em> is signaled or <em>int-timeout</em>, if present, expires.
+ Returns true when exiting normally, nil if wait times out.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Pipe"></a><h3><font color=#CC0000>Pipe</font></h3>
+<b>syntax: (<font color=#CC0000>Pipe</font> [<em>in</em> <em>out</em>])</b><br/>
+<b>parameter: </b><em>in</em> - an in-channel of an existing pipe<br/>
+<b>parameter: </b><em>out</em> - an out-channel of an existing pipe<br/>
+ <p>A Pipe is a one-way communcations channel. If <em>in</em> and <em>out</em> are supplied,
+ an existing pipe (such as the result of the pipe function) may be used.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_send"></a><h3><font color=#CC0000>:send</font></h3>
+<b>syntax: (<font color=#CC0000>:send</font> <em>inst</em> <em>msg</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Pipe<br/>
+<b>parameter: </b><em>msg</em> - the message to send<br/>
+ <p>Sends a message along the Pipe. Returns the number of bytes sent
+ (including message encoding).</p>
+<b>example:</b><blockquote><pre> (setf p (Pipe))
+ (:send p "Hello world.")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_peek"></a><h3><font color=#CC0000>:peek</font></h3>
+<b>syntax: (<font color=#CC0000>:peek</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Pipe<br/>
+ <p>Returns the number of bytes ready for reading on Pipe. This does not
+ correspond directly with the size of the message (extra data is send with
+ the message).
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_has-messages?"></a><h3><font color=#CC0000>:has-messages?</font></h3>
+<b>syntax: (<font color=#CC0000>:has-messages?</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Pipe<br/>
+ <p>Returns true if there is a message ready to be read from the Pipe.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_receive"></a><h3><font color=#CC0000>:receive</font></h3>
+<b>syntax: (<font color=#CC0000>:receive</font> <em>inst</em> [<em>block</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Pipe<br/>
+<b>parameter: </b><em>block</em> - when true, blocks until a message is available on the Pipe<br/>
+ <p>Returns the next message on the Pipe. By default, blocks until the next
+ message is available.</p>
+    
+    
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_close"></a><h3><font color=#CC0000>:close</font></h3>
+<b>syntax: (<font color=#CC0000>:close</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Pipe<br/>
+ <p>Closes the read and write handles for this Pipe.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Channel"></a><h3><font color=#CC0000>Channel</font></h3>
+<b>syntax: (<font color=#CC0000>Channel</font>)</b><br/>
+ <p>Creates a two-way communcations channel using Pipes. Channels have two
+ Pipes, a parent and a child, each of which may be given to separate processes
+ to communicate back and forth using the standard Pipe syntax.</p>
+<b>example:</b><blockquote><pre> (setf ch (Channel))
+ (map set '(parent child) (:pipes ch))
+ 
+ ; in parent, send a message
+ (:send parent "Hello child.")
+ 
+ ; fork child, receive the message, and send a response
+ (fork
+  (begin
+    (println "Child received: " (:receive child))
+    (:send child "Hello yourself!")))
+ 
+ ; in the parent process, block until a response becomes available
+ (setf resp (:receive parent))
+ (println "Parent received: " resp)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_pipes"></a><h3><font color=#CC0000>:pipes</font></h3>
+<b>syntax: (<font color=#CC0000>:pipes</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Channel<br/>
+ <p>Returns a list of the parent and child pipes. Equivalent to
+ (list (:parent inst) (:child inst)).</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_parent"></a><h3><font color=#CC0000>:parent</font></h3>
+<b>syntax: (<font color=#CC0000>:parent</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Channel<br/>
+ <p>Returns the parent Pipe.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_child"></a><h3><font color=#CC0000>:child</font></h3>
+<b>syntax: (<font color=#CC0000>:child</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Channel<br/>
+ <p>Returns the child Pipe.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_Queue"></a><h3><font color=#CC0000>Queue</font></h3>
+<b>syntax: (<font color=#CC0000>Queue</font> [<em>size</em>])</b><br/>
+<b>parameter: </b><em>size</em> - the maximum size for the queue (no max if nil)<br/>
+ <p>A Queue is a synchronized first in, first out list of items that is safe
+ for use in multiple processes. Object size is not restricted as when using
+ a shared page of memory. A Queue must be closed when no longer needed using
+ the :close method.</p>
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_count"></a><h3><font color=#CC0000>:count</font></h3>
+<b>syntax: (<font color=#CC0000>:count</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Queue<br/>
+ <p>Returns the number of items currently in the queue.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_put"></a><h3><font color=#CC0000>:put</font></h3>
+<b>syntax: (<font color=#CC0000>:put</font> <em>inst</em> <em>expr</em> [<em>block</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Queue<br/>
+<b>parameter: </b><em>expr</em> - the object to be added<br/>
+<b>parameter: </b><em>block</em> - when true, blocks until space is available in the queue<br/>
+ <p>Adds <em>expr</em> to the Queue, blocking by default. Returns true when the item
+ was added. If <em>block</em> is nil, returns nil when the Queue is full.</p>
+<b>example:</b><blockquote><pre> (setf q (Queue 4))
+ (dotimes (i 5)
+   (if (:put q i nil) (print i)))
+ =&gt; 0123</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_get"></a><h3><font color=#CC0000>:get</font></h3>
+<b>syntax: (<font color=#CC0000>:get</font> <em>inst</em> [<em>block</em>])</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Queue<br/>
+<b>parameter: </b><em>block</em> - when true, blocks until an item is available from the queue<br/>
+ <p>Pulls the next item off of the Queue. If <em>block</em> is nil, returns nil when
+ no item is available. Otherwise, blocks until one becomes available.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_close"></a><h3><font color=#CC0000>:close</font></h3>
+<b>syntax: (<font color=#CC0000>:close</font> <em>inst</em>)</b><br/>
+<b>parameter: </b><em>inst</em> - an instance of Queue<br/>
+ <p>Closes the Queue and removes its temporary files.</p>
+
+
+
+
+
+
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

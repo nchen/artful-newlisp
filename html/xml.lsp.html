@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>xml.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>xml.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="xml.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;XML</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>2.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/xml.lsp">http://static.artfulcode.net/newlisp/xml.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/xml.qwerty<br/>
+<p>Parsing and serializing of XML data (updated for newlisp 10).</p>
+ Functions to parse XML text (non-validating) and serialize lisp structures to XML.
+ Requires matching and newlisp 10.
+ <h4>Version history</h4>
+ <b>2.1</b>
+ &bull; code clean-up
+ &bull; updated for newlisp 10
+ &bull; some arguments have changed in lisp->xml and xml->lisp
+ &bull; default encoding is now determined by newlisp UTF-8 compile options
+ &bull; added functions to trim whitespace and decode entities
+<br/><br/>
+ <b>2.0</b>
+ &bull; complete rewrite
+ &bull; added XML-compliant entities
+ &bull; automatic serialization of data
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+  
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="XML_trim-whitespace"></a><h3><font color=#CC0000>XML:trim-whitespace</font></h3>
+<b>syntax: (<font color=#CC0000>XML:trim-whitespace</font> <em>str</em>)</b><br/>
+<b>parameter: </b><em>str</em> - a string<br/>
+ <p>Trims all whitespace off both ends of <em>str</em>.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="XML_decode"></a><h3><font color=#CC0000>XML:decode</font></h3>
+<b>syntax: (<font color=#CC0000>XML:decode</font> <em>str</em>)</b><br/>
+<b>parameter: </b><em>str</em> - a string<br/>
+ <p>Decodes XML entities and converts them to characters.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="XML_encode"></a><h3><font color=#CC0000>XML:encode</font></h3>
+<b>syntax: (<font color=#CC0000>XML:encode</font> <em>str</em>)</b><br/>
+<b>parameter: </b><em>str</em> - a string<br/>
+ <p>Encodes characters in a string to be valid for XML.</p>
+
+
+
+
+
+
+
+  
+  
+  
+  
+
+<br/><br/><center>&sect;</center><br/>
+<a name="XML_lisp->xml"></a><h3><font color=#CC0000>XML:lisp->xml</font></h3>
+<b>syntax: (<font color=#CC0000>XML:lisp->xml</font> <em>sxml-list</em> [<em>indent?</em> [<em>str-encoding</em>]])</b><br/>
+<b>parameter: </b><em>sxml-list</em> - an SXML list<br/>
+<b>parameter: </b><em>indent?</em> - optional; whether or not to format the resulting XML (default nil)<br/>
+<b>parameter: </b><em>str-encoding</em> - optional; sets the encoding in the declaration<br/>
+ <p>Serializes an SXML list (equivalent to parsing an XML document with
+ (xml-type-tags nil nil nil nil) and options 1 and 16). The encoding in the
+ declaration defaults to UTF-8 if newlisp was compiled with UTF-8 support,
+ ASCII otherwise.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="XML_xml->lisp"></a><h3><font color=#CC0000>XML:xml->lisp</font></h3>
+<b>syntax: (<font color=#CC0000>XML:xml->lisp</font> <em>str-xml</em>)</b><br/>
+<b>parameter: </b><em>str-xml</em> - an XML string<br/>
+ <p>Parses <em>str-xml</em> and returns an SXML list. Uses newlisp's built-in parser.</p>
+ <p>Equivalent to:</p>
+ <pre>(begin (xml-type-tags nil nil nil) (xml-parse <em>str-xml</em> (+ 1 16)))</pre>
+
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

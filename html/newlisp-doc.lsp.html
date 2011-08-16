@@ -1,0 +1,93 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>newlisp-doc.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>newlisp-doc.lsp</h1></center>
+<p><a href="index.html">Module index</a></p>
+<a href="newlisp-doc.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;newlispdoc</h2><p>Generates documentation and hightligted source from newLISP source files.</p>
+<b>Version: </b>1.3 - handle remote files specified in URLs in a url-file<br/>
+<b>Version: </b>1.4 - title on page changed to index or module name and new index module option<br/>
+<b>Version: </b>1.5 - removed font restrictions on h1,h2,h3,h4 and added hr as a legal tag<br/>
+<b>Version: </b>1.6 - don't allow 3 semicolons at the beginning of a comment line<br/>
+<b>Version: </b>1.7 - 1.6 did not sense lines with semicolon only as parapgraph separators<br/>
+<b>Version: </b>1.8 - fixed problem of "true" appearing before multiple syntax statements<br/>
+<b>Version: </b>1.9 - write-line is now version sensitive for 10.0<br/>
+<b>Version: </b>2.0 - adds handling of < ?...>  XML tag<br/>
+<b>Version: </b>2.1 - generate more compliant HTML 4.01 for doc and syntax highlighting<br/>
+                but special arithmetik op characters in functionnames still cause
+                non-compliant HTML (this occurs only in modules/gmp.lsp)
+<b>Version: </b>2.2 - fix issue with paragraph spacing and module text font from 2.1<br/>
+<b>Version: </b>2.3 - handle scientific notation with e<br/>
+<b>Version: </b>2.4 - improved keyword regex for syntax highlighting<br/>
+<b>Version: </b>2.5 - scientific notation with E<br/>
+<b>Version: </b>2.6 - allow custom tags e.g: @MyTag the descriptive text (may contain @link)<br/>
+<b>Version: </b>2.7 - link rag did not work at beginnning of line<br/>
+<b>Version: </b>2.8 - support for newLISPdoc tag color<br/>
+<b>Version: </b>2.9 - correctly highlight & and ^ keywords<br/>
+<b>Version: </b>3.0 - when -d is specified, add download link<br/>
+<b>Version: </b>3.1 - changed <tt>write-buffer</tt> to shorter <tt>write</tt>, <tt>name</tt> to <tt>term</tt><br/>
+<b>Version: </b>3.2 - formatting when view source, new stylesheet newlispdoc.css<br/>
+<b>Version: </b>3.3 - when variables are described using the syntax tag (no parentheses) color red too<br/>
+<br/><br/>
+<b>Author: </b>Lutz Mueller, 2006-2010<br/>
+<b>Location: </b><a href="http://newlisp.org">http://newlisp.org</a><br/>
+<br/><br/>
+ <h3>Usage:</h3>
+ The <tt>-s</tt> and <tt>-s</tt> switches can be used to generate highlighted source files,
+ links and and download links
+ <pre>
+    newlispdoc afile.lsp bfile.lsp
+    newlispdoc -s afile.lsp bfile.lsp
+    newlispdoc -s *.lsp
+    newlispdoc -s -d *.lsp
+ <br>
+    ; or on Win32
+    newlisp newlispdoc afile.lsp bfile.lsp
+    newlisp newlispdoc -s afile.lsp bfile.lsp
+    newlisp newlispdoc -s *.lsp
+    newlisp newlispdoc -s -d *.lsp
+ </pre>
+ newlispdoc can take a file of URLs and generate documentation and syntax
+ highlighted source from remote files:
+ <pre>
+    newlispdoc -url file-with-urls.txt 10000
+    newlispdoc -s -url file-with-urls.txt 10000
+ <br>
+    ; or on Win32
+    newlisp newlispdoc -url file-with-urls.txt 10000
+    newlisp newlispdoc -s -url file-with-urls.txt 10000
+ </pre>
+ file-with-urls.txt contains one URL per line in the file. A URLstarts either 
+ with http:// or file:// - This allows mixing  remote and local files. An optional 
+ timeout of 10 seconds is specified after the url file name. If no timeout is specified
+ newlispdoc assumes 5 seconds.
+<br/><br/>
+ Execute from within the same directory of the source files when
+ no url file is given.
+<br/><br/>
+ For each file a file with the same name and extension <tt>.html</tt> is generated
+ and written to the current directory. A file <tt>index.htm</tt> is written as
+ an index for all other files generated. If the <tt>-s</tt> switch is specified,
+ a file with the extension <tt>.src.html</tt> is generated for each file.
+<br/><br/>
+ Please read <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc.html</a> to learn
+ about tagging of newLISP source code for newlispdoc.
+<br/><br/>
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>util.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>util.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="util.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;util</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>2.0<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/util.lsp">http://static.artfulcode.net/newlisp/util.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/util.qwerty<br/>
+<p>Various functions that the other libraries depend on (updated for newlisp 10).</p>
+ Various helpful utilities for newLISP.  Requires newlisp 10+.
+<br/><br/>
+ <h4>Version history</h4>
+ <b>2.1</b>
+ &bull; added with-open-device, partial
+ &bull; added make-array, array-iter and array-map
+<br/><br/>
+ <b>2.0</b>
+ &bull; updated for newlisp 10 (backwards-incompatible)
+ &bull; refactored assoc? (now permits any key that satisfies <tt>atom?</tt>)
+ &bull; get-assoc is now a regular function whose arguments must be quoted
+ &bull; slot functions removed as new association list features make them redundant
+ &bull; dict-keys refactored and renamed to keys
+ &bull; refactored dokeys for a slight speed improvement
+<br/><br/>
+ <b>1.4</b>
+ &bull; added <em>slot-value</em>
+ &bull; <em>with-slots</em> now supports string keys
+ &bull; fixed bug when calling <em>with-slots</em> from within a context
+ &bull; <em>with-slots</em> now permits renaming of variables in binding to avoid clashes in nested calls
+ &bull; added <em>get-assoc</em>
+ &bull; added <em>dict-keys</em>
+ &bull; added <em>dokeys</em>
+<br/><br/>
+ <b>1.3</b>
+ &bull; <em>with-slots</em> now supports assoc data in the format <tt>(key val-1 val-2 ...)</tt> and '(key val)
+<br/><br/>
+ <b>1.2</b>
+ &bull; fixed bug that caused <em>with-slots</em> to return only the first value of a list
+<br/><br/>
+ <b>1.1</b>
+ &bull; added <em>fmap</em>, <em>with-slots</em>, and <em>add-assoc</em>
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_type-of"></a><h3><font color=#CC0000>type-of</font></h3>
+<b>syntax: (<font color=#CC0000>type-of</font> <em>object</em>)</b><br/>
+<b>parameter: </b><em>object</em> - any object<br/>
+ <p><tt>type-of</tt> introspects the type of the passed argument, object, and returns a string
+ representation of its type.  Correctly identifies FOOP types as well, returning the
+ string value of the first argument (by calling <tt>name</tt> on the context of the list).</p>
+<b>example:</b><blockquote><pre> (type-of 10) =&gt; "integer"
+ (type-of "hello world") =&gt; "string"
+ (type-of true) =&gt; "boolean"
+ (type-of '(1 2 3)) =&gt; "list"
+ (type-of (fn (x) (+ x x))) =&gt; "lambda"</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_gensym"></a><h3><font color=#CC0000>gensym</font></h3>
+<b>syntax: (<font color=#CC0000>gensym</font> [<em>ctx</em>])</b><br/>
+<b>parameter: </b><em>ctx</em> - optional; the context in which to create the symbol (default: MAIN)<br/>
+ <p>Returns a symbol unique to the context passed.  If <tt>ctx</tt> is nil, the symbol is
+ created in MAIN.  There is a hard limit on the number of possible symbols generated based on
+ the max integer value of the system.  Since newLISP wraps into negative numbers when passing
+ the max value, the effective max value is twice the systems maximum integer value.</p>
+<b>example:</b><blockquote><pre> (gensym) =&gt; gensym-1
+ (gensym) =&gt; gensym-2
+ 
+ (define foo:foo)
+ (gensym foo) =&gt; foo:gensym-1
+ (gensym foo) =&gt; foo:gensym-2</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_assoc?"></a><h3><font color=#CC0000>assoc?</font></h3>
+<b>syntax: (<font color=#CC0000>assoc?</font> <em>expr</em>)</b><br/>
+<b>parameter: </b><em>expr</em> - expression to be tested as an association list<br/>
+ <p>Predicates that <em>expr</em> is an association list with a structure of
+ '((key val) (key val) ...).  To evaluate true key may have only one
+ value, and keys must be symbols or strings.  Only the first level
+ is tested for associativity.</p>
+<b>example:</b><blockquote><pre> (assoc? '(1 2 3 4))
+ =&gt; nil
+ (assoc? '((a 1) (b 2) (c 3)))
+ =&gt; true
+ (assoc? '((a 1) (b 2) (c (1 2 3 4))))
+ =&gt; true</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_get-assoc"></a><h3><font color=#CC0000>get-assoc</font></h3>
+<b>syntax: (<font color=#CC0000>get-assoc</font> <em>expr</em>)</b><br/>
+<b>parameter: </b><em>expr</em> - association indexing of (<em>assoc-list</em> <em>key-1</em> [<em>key-2</em> ...])<br/>
+ <p>Extracts the value of the association expression.  Expressions are in the same
+ format as with the <tt>assoc</tt> function, but the result is the same as the <tt>lookup</tt>
+ function, except the multiple values are returned correctly.</p>
+<b>example:</b><blockquote><pre> (set 'data '((name "Joe") (friends "John" "Steve")))
+ (get-assoc (data 'name))
+ =&gt; "Joe"
+ (get-assoc (data 'friends))
+ =&gt; '("John" "Steve")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_fmap"></a><h3><font color=#CC0000>fmap</font></h3>
+<b>syntax: (<font color=#CC0000>fmap</font> <em>sym-fun</em> <em>inst</em> <em>lst*</em>)</b><br/>
+<b>parameter: </b><em>sym-fun</em> - quoted symbol naming a context function<br/>
+<b>parameter: </b><em>inst</em> - a FOOP instance<br/>
+<b>parameter: </b><em>lst*</em> - one or more lists<br/>
+ <p>FOOP methods cannot be easily mapped, since <tt>map</tt> would require that the function
+ be passed as <tt>context:function</tt>, curried for the intended FOOP instance.  However,
+ currying truncates a function's lambda list to two parameters, the first being the
+ second argument to curry.</p>
+ <p><tt>fmap</tt> solves this, although not extremely efficiently, with a lambda that wraps
+ the context function.</p>
+<b>example:</b><blockquote><pre> (define (Foo:Foo) (list (context)))
+ (define (Foo:make-list inst a b) (list a b)) ; pairs two elements
+ 
+ (let ((a '(1 2 3)) (b '(4 5 6)) (inst (Foo)))
+   (fmap 'Foo:make-list inst a b))
+ 
+ =&gt; ((1 4) (2 5) (3 6))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_keys"></a><h3><font color=#CC0000>keys</font></h3>
+<b>syntax: (<font color=#CC0000>keys</font> <em>context-dict</em>)</b><br/>
+<b>parameter: </b><em>context-dict</em> - context dictionary<br/>
+ <p>Returns a list of keys in the dictionary <em>context-dict</em>.</p>
+<b>example:</b><blockquote><pre> (define dict:dict)
+ (dict "x" 10)
+ (dict "y" 20)
+ (keys dict)
+ =&gt; '("x" "y")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_dokeys"></a><h3><font color=#CC0000>dokeys</font></h3>
+<b>syntax: (<font color=#CC0000>dokeys</font> (<em>var</em> <em>dict</em>) <em>body</em>)</b><br/>
+<b>parameter: </b><em>var</em> - variable to which the key name will be bound<br/>
+<b>parameter: </b><em>dict</em> - dictionary from which the keys will be extracted<br/>
+<b>parameter: </b><em>body</em> - the body forms to be executed with <em>var</em> bound to <em>dict</em>'s keys<br/>
+ <p>Evaluates <em>body</em> in a local block in which <em>var</em> is sequentially bound to each
+ of dict's keys.  Note that there is no special ordering of the keys.</p>
+<b>example:</b><blockquote><pre> (define dict:dict)
+ (dict "x" 10)
+ (dict "y" 20)
+ (dokeys (key dict)
+   (println key ": " (dict key)))
+ =&gt; x: 10
+ =&gt; y: 20</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_make-array"></a><h3><font color=#CC0000>make-array</font></h3>
+<b>syntax: (<font color=#CC0000>make-array</font> <em>int-size</em> <em>fn-init</em>)</b><br/>
+<b>parameter: </b><em>int-size</em> - the size of the new array<br/>
+<b>parameter: </b><em>pass-index</em> - when true (nil by default), passes the position index to <em>fn-init</em><br/>
+ <p>Generates a new  one-dimensional array of size <em>int-size</em> and initializes
+ each array index by repeatedly calling <em>fn-init</em>. The current index is
+ available in $idx.</p>
+<b>example:</b><blockquote><pre> (setf arr (make-array 4 (gensym)))
+ =&gt; '(gensym-1 gensym-2 gensym-3 gensym-4)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_array-iter"></a><h3><font color=#CC0000>array-iter</font></h3>
+<b>syntax: (<font color=#CC0000>array-iter</font> <em>fn-func</em> <em>array-arr</em>)</b><br/>
+<b>parameter: </b><em>fn-func</em> - a function to call on each index of the array<br/>
+<b>parameter: </b><em>array-arr</em> - an array<br/>
+ <p>Calls <em>fn-func</em> on each index of <em>array-arry</em>. Returns the value of the
+ last iteration. The current index is available in $idx.</p>
+<b>example:</b><blockquote><pre> (setf arr (array 4 (sequence 0 4))) ; =&gt; (0 1 2 3)
+ (array-iter (fn (i) (println (+ i $idx))) arr)
+ 0
+ 2
+ 4
+ 6</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_array-map"></a><h3><font color=#CC0000>array-map</font></h3>
+<b>syntax: (<font color=#CC0000>array-map</font> <em>fn-func</em> <em>array-arr</em>) !</b><br/>
+<b>parameter: </b><em>fn-func</em> - a function to call on each index of the array<br/>
+<b>parameter: </b><em>array-arr</em> - an array<br/>
+ <p>Similar to the built-in function map, array-map applies <em>fn-func</em> to each
+ index of <em>array-arr</em>. array-map modifies <em>array-arr</em> in place.</p>
+<b>example:</b><blockquote><pre> (setf arr (array 10 (sequence 0 10))) ; =&gt; (0 1 2 3 4 5 6 7 8 9)
+ (array-map (fn (i) (+ i $idx)))
+ (println arr) ; =&gt; '(0 2 4 6 8 10 12 14 16 18)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_with-open-device"></a><h3><font color=#CC0000>with-open-device</font></h3>
+<b>syntax: (<font color=#CC0000>with-open-device</font> <em>descriptor</em> [<em>body-expressions</em>])</b><br/>
+<b>parameter: </b><em>descriptor</em> - an open file descriptor<br/>
+<b>parameter: </b><em>body-expressions</em> - any number of expressions<br/>
+ <p>Evaluates <em>body-expressions</em> with <em>descriptor</em> as the default device.
+ Catches errors during evaluation and closes <em>descriptor</em> once complete,
+ restoring the previous default device.</p>
+<b>example:</b><blockquote><pre> ; read one line from file and close
+ (with-open-device (open "somefile.txt")
+   (println (read-line)))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_partial"></a><h3><font color=#CC0000>partial</font></h3>
+<b>syntax: (<font color=#CC0000>partial</font> <em>func</em> <em>expr</em>)</b><br/>
+<b>parameter: </b><em>func</em> - a function to be partially applied<br/>
+<b>parameter: </b><em>expr</em> - an expression to replace the first argument of <em>func</em><br/>
+ <p>Returns a new function that has been partially applied to <em>expr</em>. Unlike
+ curry, partial evaluates its arguments and does no damage to the parameter
+ list of the resulting function, which continues to accept the rest of the
+ parameters it would typically accept. This is particularly useful to fudge
+ closures over FOOP methods by partially applying them to their instances.
+ Note that macros and functions that do not evaluate their arguments may not
+ be partially applied, due to the use of the apply function in this
+ implementation.</p>
+<b>example:</b><blockquote><pre> (define (foo a b c)
+   (join (list "foo" a b c) "|"))
+ (setf foobar (partial foo "bar"))
+ (foobar "baz" "bat") ; =&gt; "foo|bar|baz|bat"</pre></blockquote>
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

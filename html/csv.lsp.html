@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>csv.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>csv.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="csv.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;CSV</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/csv.lsp">http://static.artfulcode.net/newlisp/csv.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/csv.qwerty<br/>
+<p>Functions for parsing CSV files (updated for newlisp 10)</p>
+ <h4>Version history</h4>
+ <b>1.1</b>
+ &bull; fixed incompatibilities with newlisp 10
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="CSV_make-row-parser"></a><h3><font color=#CC0000>CSV:make-row-parser</font></h3>
+<b>syntax: (<font color=#CC0000>CSV:make-row-parser</font> <em>str-delimiter</em> <em>str-quote-char</em>)</b><br/>
+<b>parameter: </b><em>str-delimiter</em> - column delimiter<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings<br/>
+ <p>Returns a lambda that is able to parse a single row of CSV text.
+ The created function returns a list of column values.</p>
+<b>example:</b><blockquote><pre> (setq parser (CSV:make-row-parser "," "\""))
+ =&gt; parser function
+ 
+ (parser "foo,bar,baz,bat")
+ =&gt; ("foo" "bar" "baz" "bat")
+ 
+ (setq parser (CSV:make-row-parser "|" "\""))
+ =&gt; parser function
+ 
+ (parser "foo|bar|baz|bat")
+ =&gt; ("foo" "bar" "baz" "bat")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="CSV_parse-string"></a><h3><font color=#CC0000>CSV:parse-string</font></h3>
+<b>syntax: (<font color=#CC0000>CSV:parse-string</font> <em>str-text</em> [<em>str-delimiter</em> [<em>str-quote-char</em>]])</b><br/>
+<b>parameter: </b><em>str-text</em> - the text to be parsed<br/>
+<b>parameter: </b><em>str-delimiter</em> - column delimiter<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings<br/>
+ <p>Parses a string of text as a CSV file.  Returns a list with one element
+ for each line; each element is a list of column values for each line in the
+ text.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="CSV_parse-file"></a><h3><font color=#CC0000>CSV:parse-file</font></h3>
+<b>syntax: (<font color=#CC0000>CSV:parse-file</font> <em>str-file</em> [<em>str-delimiter</em> [<em>str-quote-char</em>]])</b><br/>
+<b>parameter: </b><em>str-file</em> - the file to be read and parsed<br/>
+<b>parameter: </b><em>str-delimiter</em> - column delimiter<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings<br/>
+ <p>Parses a CSV text file.  Returns a list with one element
+ for each line; each element is a list of column values for each line in the
+ text.  <em>parse-file</em> parses line by line, rather than processing the entire
+ string at once, and is therefore more efficient than <em>parse-file</em>.</p>
+ <p><b>Note:</b> at least some versions of MS Excel use a single \r for
+ line endings, rather than a line feed or both.  newLISP's read-line will
+ only treat \n or \r\n as line endings.  If all columns are lumped into one
+ flat list, this may be the culprit.  In this case, use <em>parse-string</em> with
+ <em>read-file</em> instead as the best alternative.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="CSV_list->row"></a><h3><font color=#CC0000>CSV:list->row</font></h3>
+<b>syntax: (<font color=#CC0000>CSV:list->row</font> <em>list-cols</em> <em>str-delimiter</em> <em>str-quote-char</em>)</b><br/>
+<b>parameter: </b><em>str-delimiter</em> - column delimiter; defaults to ","<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings; defaults to "\""<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings<br/>
+ <p>Generates one row of CSV data from the values in <em>list-cols</em>.  Non-numeric
+ elements are treated as quoted strings.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="CSV_list->csv"></a><h3><font color=#CC0000>CSV:list->csv</font></h3>
+<b>syntax: (<font color=#CC0000>CSV:list->csv</font> <em>list-rows</em> <em>str-delimiter</em> <em>str-quote-char</em> <em>str-eol</em>)</b><br/>
+<b>parameter: </b><em>list-rows</em> - list of row sets (each is a list of values)<br/>
+<b>parameter: </b><em>str-delimiter</em> - column delimiter; defaults to ","<br/>
+<b>parameter: </b><em>str-quote-char</em> - character denoting quoted strings; defaults to "\""<br/>
+<b>parameter: </b><em>str-eol</em> - end of line character; defaults to "\n"<br/>
+ <p>Generates CSV string of a list of column value sets.</p>
+
+
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

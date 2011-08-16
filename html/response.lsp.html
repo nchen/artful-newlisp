@@ -1,0 +1,160 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>response.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>response.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="response.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;Response</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.2.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/response.lsp">http://static.artfulcode.net/newlisp/response.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/response.qwerty<br/>
+<p>Response module to replace output functions in the standard CGI module (updated for newlisp 10)</p>
+ This module is independent of the Http module, and duplicates some of the effort there
+ by providing the ability to write headers to the HTTP output (such as the content-type and
+ the ability to redirect).  It is meant to be used with an existing CGI serving application,
+ such as Apache.
+<br/><br/>
+ Output is controlled using <tt>Response:write</tt> or default functor (`Response:Response`),
+ which formats the output as a CGI response.  The result of <tt>Response:Response</tt> is a
+ formatted string.  It is the application's responsibility to print this string or pass
+ it to the appropriate middle-man.
+<br/><br/>
+ <h4>Version history</h4>
+ <b>1.2.1</b>
+ &bull; replaced deprecated set-assoc with setf in Response:header
+<br/><br/>
+ <b>1.2</b>
+ &bull; fixed incompatibilities with newlisp 10
+<br/><br/>
+ <b>1.1</b>
+ &bull; fixed bug in <tt>headers</tt>
+ &bull; fixed bug forcing text/html on all responses
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_write"></a><h3><font color=#CC0000>Response:write</font></h3>
+<b>syntax: (<font color=#CC0000>Response:write</font> <em>str-text</em> ...)</b><br/>
+<b>parameter: </b><em>str-text</em> - text to write to the output buffer<br/>
+ <p><tt>Response:write</tt> allows programmatic output of CGI content.</p>
+<b>example:</b><blockquote><pre> (Response:write "&lt;html&gt;\n")
+ (Response:write "&lt;head&gt;&lt;title&gt;Test page&lt;/title&gt;&lt;/head&gt;\n")
+ (Response:write "&lt;body&gt;&lt;h3&gt;Hello world&lt;/h3&gt;&lt;/body&gt;\n")
+ (Response:write "&lt;/html&gt;")</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_header"></a><h3><font color=#CC0000>Response:header</font></h3>
+<b>syntax: (<font color=#CC0000>Response:header</font> <em>str-key</em> <em>str-val</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - header name<br/>
+<b>parameter: </b><em>str-val</em> - header content<br/>
+ <p>Adds a new header to the output.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_header?"></a><h3><font color=#CC0000>Response:header?</font></h3>
+<b>syntax: (<font color=#CC0000>Response:header?</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - header name<br/>
+ <p>Predicates that a header has already been added for output.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_headers"></a><h3><font color=#CC0000>Response:headers</font></h3>
+<b>syntax: (<font color=#CC0000>Response:headers</font>)</b><br/>
+ <p>Returns an association list of headers that have been set.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_set-cookie"></a><h3><font color=#CC0000>Response:set-cookie</font></h3>
+<b>syntax: (<font color=#CC0000>Response:set-cookie</font> <em>str-key</em> <em>str-value</em> [<em>str-domain</em> [<em>str-path</em> [<em>int-expires</em>]]])</b><br/>
+<b>parameter: </b><em>str-key</em> - the cookie's name<br/>
+<b>parameter: </b><em>str-value</em> - the cookie's value<br/>
+<b>parameter: </b><em>str-domain</em> - optional; the cookie's domain<br/>
+<b>parameter: </b><em>str-path</em> - optional; the cookie's path<br/>
+<b>parameter: </b><em>int-expires</em> - optional; integer timestamp suitable as an input to <tt>date</tt><br/>
+ <p>Adds a cookie to the output buffer.</p>
+<b>example:</b><blockquote><pre> (let ((sid (new-session-id)))
+   (Response:set-cookie "session-id" sid nil nil (+ (date-value) (* 60 60))))
+ 
+ =&gt; sets cookie "session-id" to the result of the function 'new-session-id' and
+    an expiration date one hour in the future.</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_delete-cookie"></a><h3><font color=#CC0000>Response:delete-cookie</font></h3>
+<b>syntax: (<font color=#CC0000>Response:delete-cookie</font> <em>str-key</em> [<em>str-domain</em> [<em>str-path</em>]])</b><br/>
+<b>parameter: </b><em>str-key</em> - the cookie's name<br/>
+<b>parameter: </b><em>str-domain</em> - optional; the cookie's domain<br/>
+<b>parameter: </b><em>str-path</em> - optional; the cookie's path<br/>
+ <p>Deletes a cookie with matching key/domain/path that has been previously set.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_cookie-set?"></a><h3><font color=#CC0000>Response:cookie-set?</font></h3>
+<b>syntax: (<font color=#CC0000>Response:cookie-set?</font> <em>str-key</em> [<em>str-domain</em> [<em>str-path</em>]])</b><br/>
+<b>parameter: </b><em>str-key</em> - the cookie's name<br/>
+<b>parameter: </b><em>str-domain</em> - optional; the cookie's domain<br/>
+<b>parameter: </b><em>str-path</em> - optional; the cookie's path<br/>
+ <p>Predicates whether a cookie with a matching pattern has been previously set.</p>
+
+
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_Response"></a><h3><font color=#CC0000>Response:Response</font></h3>
+<b>syntax: (<font color=#CC0000>Response:Response</font> [<em>str-text</em>])</b><br/>
+<b>parameter: </b><em>str-text</em> - optional; string text to output<br/>
+ <p>The default functor will return a formatted response, suitable for CGI output.
+ If <em>str-text</em> is provided, this will be the output.  Otherwise, any content added
+ with <tt>Response:write</tt> will be used.</p>
+ <p>Output will include any necessary headers, including cookies, that were set
+ for this session.</p>
+ <p>This module is not re-entrant, so in a stateful environment, it should be
+ prototyped using <tt>new</tt> for each new response.</p>
+ <p>The manner in which the response is rendered may be hacked by setting the
+ variable <tt>Response:_response</tt> to a suitable lambda expression.  See the code for
+ more implementation details.</p>
+<b>example:</b><blockquote><pre> (Response "Hello world")
+ =&gt; "Status: 200 OK\nContent-type: text/html; charset=utf-8\nContent-Length: 11\n\nHello world"
+ 
+ (Response:write "Hello world")
+ (Response)
+ =&gt; "Status: 200 OK\nContent-type: text/html; charset=utf-8\nContent-Length: 11\n\nHello world"</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_redirect"></a><h3><font color=#CC0000>Response:redirect</font></h3>
+<b>syntax: (<font color=#CC0000>Response:redirect</font> <em>str-path</em>)</b><br/>
+<b>parameter: </b><em>str-path</em> - the url or path to redirect to<br/>
+ <p>Redirects the client to <em>str-path</em>.</p>
+<b>example:</b><blockquote><pre> (Response:redirect "/some/other/path")
+ =&gt; "Status: 302 Found\nLocation: /some/other/path\n\n"</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_not-found"></a><h3><font color=#CC0000>Response:not-found</font></h3>
+<b>syntax: (<font color=#CC0000>Response:not-found</font> <em>str-message</em>)</b><br/>
+<b>parameter: </b><em>str-message</em> - 404 NOT FOUND error message to display<br/>
+ <p>Outputs a 404 NOT FOUND error message.</p>
+<b>example:</b><blockquote><pre> (Response:not-found "&lt;p&gt;These are not the droids you are looking for.&lt;/p&gt;")
+ =&gt; "Status: 404 Not Found\nContent-type: text/html; charset=utf-8\nContent-Length: 52\n\n&lt;p&gt;These are not the droids you are looking for.&lt;/p&gt;"</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Response_error"></a><h3><font color=#CC0000>Response:error</font></h3>
+<b>syntax: (<font color=#CC0000>Response:error</font> <em>str-message</em>)</b><br/>
+<b>parameter: </b><em>str-message</em> - 500 ERROR message to display<br/>
+ <p>Outputs a 500 ERROR message.</p>
+<b>example:</b><blockquote><pre> (Response:error "&lt;p&gt;An error occurred while processing this request.&lt;/p&gt;")
+ =&gt; "Status: 500 Internal Error\nContent-type: text/html; charset=utf-8\nContent-Length: 55\n\n&lt;p&gt;An error occurred while processing this request.&lt;/p&gt;"</pre></blockquote>
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

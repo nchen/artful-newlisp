@@ -1,0 +1,294 @@
+<!DOCTYPE HTML PUBLIC "4.01 Transitional"><html><title>util</title><body><pre>
+<font color='#555555'>;; <font color='#308080'>@module</font> util</font>
+<font color='#555555'>;; <font color='#308080'>@author</font> Jeff Ober &lt;jeffober@gmail.com&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@version</font> 2.0</font>
+<font color='#555555'>;; <font color='#308080'>@location</font> http://static.artfulcode.net/newlisp/util.lsp</font>
+<font color='#555555'>;; <font color='#308080'>@package</font> http://static.artfulcode.net/newlisp/util.qwerty</font>
+<font color='#555555'>;; <font color='#308080'>@description</font> Various functions that the other libraries depend on (updated for newlisp 10).</font>
+<font color='#555555'>;; Various helpful utilities for newLISP.  Requires newlisp 10+.</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;h4&gt;Version history&lt;/h4&gt;</font>
+<font color='#555555'>;; &lt;b&gt;2.1&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; added with-open-device, partial</font>
+<font color='#555555'>;; &amp;bull; added make-array, array-iter and array-map</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;2.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; updated for newlisp 10 (backwards-incompatible)</font>
+<font color='#555555'>;; &amp;bull; refactored assoc? (now permits any key that satisfies 'atom?')</font>
+<font color='#555555'>;; &amp;bull; get-assoc is now a regular function whose arguments must be quoted</font>
+<font color='#555555'>;; &amp;bull; slot functions removed as new association list features make them redundant</font>
+<font color='#555555'>;; &amp;bull; dict-keys refactored and renamed to keys</font>
+<font color='#555555'>;; &amp;bull; refactored dokeys for a slight speed improvement</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.4&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; added &lt;slot-value&gt;</font>
+<font color='#555555'>;; &amp;bull; &lt;with-slots&gt; now supports string keys</font>
+<font color='#555555'>;; &amp;bull; fixed bug when calling &lt;with-slots&gt; from within a context</font>
+<font color='#555555'>;; &amp;bull; &lt;with-slots&gt; now permits renaming of variables in binding to avoid clashes in nested calls</font>
+<font color='#555555'>;; &amp;bull; added &lt;get-assoc&gt;</font>
+<font color='#555555'>;; &amp;bull; added &lt;dict-keys&gt;</font>
+<font color='#555555'>;; &amp;bull; added &lt;dokeys&gt;</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.3&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; &lt;with-slots&gt; now supports assoc data in the format '(key val-1 val-2 ...)' and '(key val)</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.2&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; fixed bug that caused &lt;with-slots&gt; to return only the first value of a list</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.1&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; added &lt;fmap&gt;, &lt;with-slots&gt;, and &lt;add-assoc&gt;</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; initial release</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (type-of &lt;object&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;object&gt; any object</font>
+<font color='#555555'>;; &lt;p&gt;'type-of' introspects the type of the passed argument, object, and returns a string</font>
+<font color='#555555'>;; representation of its type.  Correctly identifies FOOP types as well, returning the</font>
+<font color='#555555'>;; string value of the first argument (by calling 'name' on the context of the list).&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (type-of 10) => "integer"</font>
+<font color='#555555'>;; (type-of "hello world") => "string"</font>
+<font color='#555555'>;; (type-of true) => "boolean"</font>
+<font color='#555555'>;; (type-of '(1 2 3)) => "list"</font>
+<font color='#555555'>;; (type-of (fn (x) (+ x x))) => "lambda"</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>setq</font> type-of:types '<font color='#AA0000'>(</font><font color='#008800'>"boolean"</font> <font color='#008800'>"boolean"</font> <font color='#008800'>"integer"</font> <font color='#008800'>"float"</font> <font color='#008800'>"string"</font> <font color='#008800'>"symbol"</font> <font color='#008800'>"context"</font>
+					  <font color='#008800'>"primitive"</font> <font color='#008800'>"primitive"</font> <font color='#008800'>"primitive"</font> <font color='#008800'>"quote"</font> <font color='#008800'>"list"</font> <font color='#008800'>"lambda"</font> <font color='#008800'>"macro"</font>
+					  <font color='#008800'>"array"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>type-of:type-of x<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>let</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>type <font color='#AA0000'>(</font>type-of:types <font color='#AA0000'>(</font><font color='#0000AA'>&amp;</font> <font color='#665500'>0xf</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>dump</font> x<font color='#AA0000'>)</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+	  <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#008800'>"list"</font> type<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>context?</font> <font color='#AA0000'>(</font><font color='#0000AA'>first</font> x<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+	      <font color='#AA0000'>(</font>name <font color='#AA0000'>(</font><font color='#0000AA'>first</font> x<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+		    type<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (gensym [&lt;ctx&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;ctx&gt; optional; the context in which to create the symbol (default: MAIN)</font>
+<font color='#555555'>;; &lt;p&gt;Returns a symbol unique to the context passed.  If 'ctx' is nil, the symbol is</font>
+<font color='#555555'>;; created in MAIN.  There is a hard limit on the number of possible symbols generated based on</font>
+<font color='#555555'>;; the max integer value of the system.  Since newLISP wraps into negative numbers when passing</font>
+<font color='#555555'>;; the max value, the effective max value is twice the systems maximum integer value.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (gensym) => gensym-1</font>
+<font color='#555555'>;; (gensym) => gensym-2</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; (define foo:foo)</font>
+<font color='#555555'>;; (gensym foo) => foo:gensym-1</font>
+<font color='#555555'>;; (gensym foo) => foo:gensym-2</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> _gensym:_gensym<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>gensym:gensym <font color='#AA0000'>(</font>ctx MAIN<font color='#AA0000'>)</font> , ctx-name new-sym<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> ctx-name <font color='#AA0000'>(</font>name ctx<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font>_gensym ctx-name<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>begin</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> new-sym <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#008800'>"gensym-"</font> <font color='#AA0000'>(</font>_gensym ctx-name <font color='#AA0000'>(</font><font color='#0000AA'>+</font> <font color='#665500'>1</font> <font color='#AA0000'>(</font>_gensym ctx-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>or</font> <font color='#AA0000'>(</font><font color='#0000AA'>sym</font> new-sym ctx<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>gensym ctx<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>begin</font>
+      <font color='#AA0000'>(</font>_gensym ctx-name <font color='#665500'>0</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>gensym ctx<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (assoc? &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; expression to be tested as an association list</font>
+<font color='#555555'>;; &lt;p&gt;Predicates that &lt;expr&gt; is an association list with a structure of</font>
+<font color='#555555'>;; '((key val) (key val) ...).  To evaluate true key may have only one</font>
+<font color='#555555'>;; value, and keys must be symbols or strings.  Only the first level</font>
+<font color='#555555'>;; is tested for associativity.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (assoc? '(1 2 3 4))</font>
+<font color='#555555'>;; => nil</font>
+<font color='#555555'>;; (assoc? '((a 1) (b 2) (c 3)))</font>
+<font color='#555555'>;; => true</font>
+<font color='#555555'>;; (assoc? '((a 1) (b 2) (c (1 2 3 4))))</font>
+<font color='#555555'>;; => true</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>assoc? lst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>list?</font> lst<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>for-all</font>
+      <font color='#AA0000'>(</font>lambda <font color='#AA0000'>(</font>elt<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#665500'>2</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> elt<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+             <font color='#AA0000'>(</font><font color='#0000AA'>atom?</font> <font color='#AA0000'>(</font><font color='#0000AA'>first</font> elt<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      lst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'assoc?<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (get-assoc &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; association indexing of (&lt;assoc-list&gt; &lt;key-1&gt; [&lt;key-2&gt; ...])</font>
+<font color='#555555'>;; &lt;p&gt;Extracts the value of the association expression.  Expressions are in the same</font>
+<font color='#555555'>;; format as with the 'assoc' function, but the result is the same as the 'lookup'</font>
+<font color='#555555'>;; function, except the multiple values are returned correctly.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (set 'data '((name "Joe") (friends "John" "Steve")))</font>
+<font color='#555555'>;; (get-assoc (data 'name))</font>
+<font color='#555555'>;; => "Joe"</font>
+<font color='#555555'>;; (get-assoc (data 'friends))</font>
+<font color='#555555'>;; => '("John" "Steve")</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>get-assoc expr , found<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> found <font color='#AA0000'>(</font><font color='#0000AA'>apply</font> <font color='#0000AA'>assoc</font> expr<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> found
+    <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#665500'>2</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> found<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>last</font> found<font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> found<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'get-assoc<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (fmap &lt;sym-fun&gt; &lt;inst&gt; &lt;lst*>)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;sym-fun&gt; quoted symbol naming a context function</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; a FOOP instance</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;lst*> one or more lists</font>
+<font color='#555555'>;; &lt;p&gt;FOOP methods cannot be easily mapped, since 'map' would require that the function</font>
+<font color='#555555'>;; be passed as 'context:function', curried for the intended FOOP instance.  However,</font>
+<font color='#555555'>;; currying truncates a function's lambda list to two parameters, the first being the</font>
+<font color='#555555'>;; second argument to curry.&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;'fmap' solves this, although not extremely efficiently, with a lambda that wraps</font>
+<font color='#555555'>;; the context function.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (define (Foo:Foo) (list (context)))</font>
+<font color='#555555'>;; (define (Foo:make-list inst a b) (list a b)) ; pairs two elements</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; (let ((a '(1 2 3)) (b '(4 5 6)) (inst (Foo)))</font>
+<font color='#555555'>;;   (fmap 'Foo:make-list inst a b))</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; => ((1 4) (2 5) (3 6))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>fmap fun inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>append</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>list</font> 'map <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>apply</font> fun <font color='#AA0000'>(</font><font color='#0000AA'>cons</font> inst <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>map</font> 'quote <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'fmap<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (keys &lt;context-dict&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;context-dict&gt; context dictionary</font>
+<font color='#555555'>;; &lt;p&gt;Returns a list of keys in the dictionary &lt;context-dict&gt;.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (define dict:dict)</font>
+<font color='#555555'>;; (dict "x" 10)</font>
+<font color='#555555'>;; (dict "y" 20)</font>
+<font color='#555555'>;; (keys dict)</font>
+<font color='#555555'>;; => '("x" "y")</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>keys ctx<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font>key<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>trim</font> key <font color='#008800'>"_"</font> <font color='#008800'>""</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#0000AA'>filter</font> <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font>key<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>starts-with</font> key <font color='#008800'>"_"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+               <font color='#AA0000'>(</font><font color='#0000AA'>map</font> name <font color='#AA0000'>(</font><font color='#0000AA'>symbols</font> ctx<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'keys<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (dokeys (&lt;var&gt; &lt;dict&gt;) &lt;body&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;var&gt; variable to which the key name will be bound</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;dict&gt; dictionary from which the keys will be extracted</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;body&gt; the body forms to be executed with &lt;var&gt; bound to &lt;dict&gt;'s keys</font>
+<font color='#555555'>;; &lt;p&gt;Evaluates &lt;body&gt; in a local block in which &lt;var&gt; is sequentially bound to each</font>
+<font color='#555555'>;; of dict's keys.  Note that there is no special ordering of the keys.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (define dict:dict)</font>
+<font color='#555555'>;; (dict "x" 10)</font>
+<font color='#555555'>;; (dict "y" 20)</font>
+<font color='#555555'>;; (dokeys (key dict)</font>
+<font color='#555555'>;;   (println key ": " (dict key)))</font>
+<font color='#555555'>;; => x: 10</font>
+<font color='#555555'>;; => y: 20</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>dokeys<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>var <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>ctx <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>body <font color='#AA0000'>(</font><font color='#0000AA'>cons</font> 'begin <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>key <font color='#AA0000'>(</font>keys ctx<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> var key<font color='#AA0000'>)</font>
+      body<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'dokeys<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (make-array &lt;int-size&gt; &lt;fn-init&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-size&gt; the size of the new array</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;pass-index&gt; when true (nil by default), passes the position index to &lt;fn-init&gt;</font>
+<font color='#555555'>;; &lt;p&gt;Generates a new  one-dimensional array of size &lt;int-size&gt; and initializes</font>
+<font color='#555555'>;; each array index by repeatedly calling &lt;fn-init&gt;. The current index is</font>
+<font color='#555555'>;; available in $idx.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf arr (make-array 4 (gensym)))</font>
+<font color='#555555'>;; => '(gensym-1 gensym-2 gensym-3 gensym-4)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>make-array size fun , arr i<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> arr <font color='#AA0000'>(</font><font color='#0000AA'>array</font> size<font color='#AA0000'>)</font> i <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> i<font color='#AA0000'>)</font> size<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> <font color='#AA0000'>(</font>arr i<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>fun<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  arr<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'make-array<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (array-iter &lt;fn-func&gt; &lt;array-arr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;fn-func&gt; a function to call on each index of the array</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;array-arr&gt; an array</font>
+<font color='#555555'>;; &lt;p&gt;Calls &lt;fn-func&gt; on each index of &lt;array-arry&gt;. Returns the value of the</font>
+<font color='#555555'>;; last iteration. The current index is available in $idx.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf arr (array 4 (sequence 0 4))) ; => (0 1 2 3)</font>
+<font color='#555555'>;; (array-iter (fn (i) (println (+ i $idx))) arr)</font>
+<font color='#555555'>;; 0</font>
+<font color='#555555'>;; 2</font>
+<font color='#555555'>;; 4</font>
+<font color='#555555'>;; 6</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>array-iter fun arr , size i<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> i <font color='#665500'>-1</font> size <font color='#AA0000'>(</font><font color='#0000AA'>length</font> arr<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> i<font color='#AA0000'>)</font> size<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>fun <font color='#AA0000'>(</font>arr i<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'array-iter<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (array-map &lt;fn-func&gt; &lt;array-arr&gt;) !</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;fn-func&gt; a function to call on each index of the array</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;array-arr&gt; an array</font>
+<font color='#555555'>;; &lt;p&gt;Similar to the built-in function map, array-map applies &lt;fn-func&gt; to each</font>
+<font color='#555555'>;; index of &lt;array-arr&gt;. array-map modifies &lt;array-arr&gt; in place.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf arr (array 10 (sequence 0 10))) ; => (0 1 2 3 4 5 6 7 8 9)</font>
+<font color='#555555'>;; (array-map (fn (i) (+ i $idx)))</font>
+<font color='#555555'>;; (println arr) ; => '(0 2 4 6 8 10 12 14 16 18)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>array-map<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>i <font color='#AA0000'>(</font>gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>size <font color='#AA0000'>(</font>gensym<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>fun <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>arr <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> i <font color='#665500'>-1</font> size <font color='#AA0000'>(</font><font color='#0000AA'>length</font> arr<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> i<font color='#AA0000'>)</font> size<font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> <font color='#AA0000'>(</font>arr i<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>fun $it<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'array-map<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (with-open-device &lt;descriptor&gt; [&lt;body-expressions&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;descriptor&gt; an open file descriptor</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;body-expressions&gt; any number of expressions</font>
+<font color='#555555'>;; &lt;p&gt;Evaluates &lt;body-expressions&gt; with &lt;descriptor&gt; as the default device.</font>
+<font color='#555555'>;; Catches errors during evaluation and closes &lt;descriptor&gt; once complete,</font>
+<font color='#555555'>;; restoring the previous default device.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; ; read one line from file and close</font>
+<font color='#555555'>;; (with-open-device (open "somefile.txt")</font>
+<font color='#555555'>;;   (println (read-line)))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>with-open-device<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>let</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>old-dev <font color='#AA0000'>(</font><font color='#0000AA'>device</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>dev <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>return<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>result<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>device</font> dev<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> return <font color='#AA0000'>(</font><font color='#0000AA'>catch</font> <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> <font color='#AA0000'>(</font><font color='#0000AA'>cons</font> <font color='#0000AA'>begin</font> <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> 'result<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>close</font> <font color='#AA0000'>(</font><font color='#0000AA'>device</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>device</font> old-dev<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>if</font> return result <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> result<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'with-open-device<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (partial &lt;func&gt; &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func&gt; a function to be partially applied</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; an expression to replace the first argument of &lt;func&gt;</font>
+<font color='#555555'>;; &lt;p&gt;Returns a new function that has been partially applied to &lt;expr&gt;. Unlike</font>
+<font color='#555555'>;; curry, partial evaluates its arguments and does no damage to the parameter</font>
+<font color='#555555'>;; list of the resulting function, which continues to accept the rest of the</font>
+<font color='#555555'>;; parameters it would typically accept. This is particularly useful to fudge</font>
+<font color='#555555'>;; closures over FOOP methods by partially applying them to their instances.</font>
+<font color='#555555'>;; Note that macros and functions that do not evaluate their arguments may not</font>
+<font color='#555555'>;; be partially applied, due to the use of the apply function in this</font>
+<font color='#555555'>;; implementation.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (define (foo a b c)</font>
+<font color='#555555'>;;   (join (list "foo" a b c) "|"))</font>
+<font color='#555555'>;; (setf foobar (partial foo "bar"))</font>
+<font color='#555555'>;; (foobar "baz" "bat") ; => "foo|bar|baz|bat"</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>partial func arg<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>func func<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>arg arg<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>lambda <font color='#AA0000'>(</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>apply</font> func <font color='#AA0000'>(</font><font color='#0000AA'>cons</font> 'arg <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'partial<font color='#AA0000'>)</font>
+
+
+</pre><center><font face='Arial' size='-3' color='#666666'>syntax highlighting with <a href="http://newlisp.org">newLISP</a>&nbsp;and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a></font></center></body></html>

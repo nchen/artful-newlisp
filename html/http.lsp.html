@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>http.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>http.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="http.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;Http</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/http.lsp">http://static.artfulcode.net/newlisp/http.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/http.qwerty<br/>
+<p>A bare-bones HTTP 1.0 library (updated for newlisp 10).</p>
+ Http is an extremely bare-bones HTTP 1.0 library. Not all functionality
+ is implemented. In particular, the ability to parse an HTTP response is not
+ yet finished, but the ability to parse requests and send both requests and
+ responses is finished.
+ This module has not been rigorously tested. Your mileage may vary. Requires
+ newlisp 10.
+ <h4>Version history</h4>
+ <b>1.1</b>
+ &bull; updated for newlisp 10
+ &bull; code clean-up
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Http_parse-request"></a><h3><font color=#CC0000>Http:parse-request</font></h3>
+<b>syntax: (<font color=#CC0000>Http:parse-request</font> <em>str-request</em>)</b><br/>
+<b>parameter: </b><em>str-request</em> - an HTTP request received<br/>
+ <p>Parses an HTTP request and returns an association list.</p>
+<b>example:</b><blockquote><pre> (parse-request
+   (format-request "POST"
+                   "/cgi-bin/post_comment.cgi"
+                   '(("Host" "www.somesite.com"))
+                   "name=Some+Person&comment=Hello+world!"))
+
+ =&gt; (("method" "POST")
+     ("path" "/cgi-bin/post_comment.cgi")
+     ("http-version" "1.0")
+     ("headers" (("host" "www.somesite.com")
+                 ("content-length" "37") nil)) 
+     ("content" ""))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Http_format-response"></a><h3><font color=#CC0000>Http:format-response</font></h3>
+<b>syntax: (<font color=#CC0000>Http:format-response</font> <em>str-response</em> [<em>int-code</em> [<em>str-content-type</em> [<em>assoc-headers</em>]]])</b><br/>
+<b>parameter: </b><em>str-response</em> - the text of the HTTP response<br/>
+<b>parameter: </b><em>int-code</em> - the HTTP response code; default is 200 (success)<br/>
+<b>parameter: </b><em>str-content-type</em> - MIME type of response; default is "text/html"<br/>
+<b>parameter: </b><em>assoc-headers</em> - association list of headers to add to response<br/>
+ <p>Formats an HTTP/1.0 response.</p>
+<b>example:</b><blockquote><pre> (format-response binary-file-content 200 "audio/mp3")
+ =&gt; "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Type: audio/mp3\r\nDate: Tue, 08 Jul 2008 10:30:09 EDT\r\nContent-Length: 17\r\n\r\n11000101010101..."</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="Http_format-request"></a><h3><font color=#CC0000>Http:format-request</font></h3>
+<b>syntax: (<font color=#CC0000>Http:format-request</font> <em>str-method</em> [<em>str-path</em> [<em>assoc-headers</em> [<em>str-content</em>]]])</b><br/>
+<b>parameter: </b><em>str-method</em> - request method (GET, POST, HEAD, or PUT)<br/>
+<b>parameter: </b><em>str-path</em> - request path; default is "/"<br/>
+<b>parameter: </b><em>assoc-headers</em> - association list of headers to add to request<br/>
+<b>parameter: </b><em>str-content</em> - for POST and PUT methods, string containing request content<br/>
+ <p>Formats an appropriate HTTP/1.0 request. Note that the "Host" header must be added explicitly if required.</p>
+ @example
+ (format-request "POST"
+                 "/cgi-bin/post_comment.cgi"
+                 '(("Host" "www.somesite.com"))
+                 "name=Some+Person&comment=Hello+world!"))
+ => "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Type: text/html\r\nDate: Tue, 08 Jul 2008 10:28:03 EDT\r\nContent-Length: 46\r\n\r\n<em>html</em><em>body</em><h1>Hello world</h2><em>/body</em><em>/html</em>"
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>request.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>request.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="request.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;Request</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.1<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/request.lsp">http://static.artfulcode.net/newlisp/request.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/request.qwerty<br/>
+<p>Request module to replace input functions in the standard CGI module (updated for newlisp 10)</p>
+ <tt>Request</tt> encapsulates the processing of CGI environmental variables in
+ a different manner than the standard CGI library.  POST and GET variables
+ are separated, and the url is parsed into a list of segments in order to
+ make use with .htaccess files and mod_rewrite simpler.
+<br/><br/>
+ POST data can only be read once, after which it becomes unavailable
+ to future parts of the program.  Should the default cgi.lsp module precede
+ this module, POST data will be unavailable through the Request class.  If
+ cgi.lsp is loaded after this module, POST data is unavailable to it.
+<br/><br/>
+ This module does not include output functions, including setting cookies.
+ Output is a function of the Response class.
+ <h4>Version history</h4>
+ <b>1.1</b>
+ &bull; fixed incompatibilites with newlisp 10
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+
+
+
+
+
+
+
+
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_method"></a><h3><font color=#CC0000>Request:method</font></h3>
+<b>syntax: (<font color=#CC0000>Request:method</font>)</b><br/>
+<p><b>return: </b>string</p>
+ <p>Returns the request method.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_get?"></a><h3><font color=#CC0000>Request:get?</font></h3>
+<b>syntax: (<font color=#CC0000>Request:get?</font>)</b><br/>
+<p><b>return: </b>boolean</p>
+ <p>Predicates that the request method is GET.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_post?"></a><h3><font color=#CC0000>Request:post?</font></h3>
+<b>syntax: (<font color=#CC0000>Request:post?</font>)</b><br/>
+<p><b>return: </b>boolean</p>
+ <p>Predicates that the request method is POST.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_get"></a><h3><font color=#CC0000>Request:get</font></h3>
+<b>syntax: (<font color=#CC0000>Request:get</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - a GET variable<br/>
+ <p>Fetches a GET variable from the query string.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_post"></a><h3><font color=#CC0000>Request:post</font></h3>
+<b>syntax: (<font color=#CC0000>Request:post</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - a POST variable<br/>
+ <p>Fetches a POST variable from the request content.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_cookies"></a><h3><font color=#CC0000>Request:cookies</font></h3>
+<b>syntax: (<font color=#CC0000>Request:cookies</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - a COOKIE variable<br/>
+ <p>Fetches the value of a cookie.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_cookie?"></a><h3><font color=#CC0000>Request:cookie?</font></h3>
+<b>syntax: (<font color=#CC0000>Request:cookie?</font> <em>str-key</em>)</b><br/>
+<b>parameter: </b><em>str-key</em> - a COOKIE variable<br/>
+ <p>Predicates that a COOKIE variable is set.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="Request_segments"></a><h3><font color=#CC0000>Request:segments</font></h3>
+<b>syntax: (<font color=#CC0000>Request:segments</font>)</b><br/>
+<p><b>return: </b>list</p>
+ <p>Returns a list of each part of the query path, e.g.
+ /foo/bar/baz becomes <tt>("foo" "bar" "baz")</tt>.</p>
+
+
+
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>

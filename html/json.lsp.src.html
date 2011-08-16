@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "4.01 Transitional"><html><title>Json</title><body><pre>
+<font color='#555555'>;; <font color='#308080'>@module</font> Json</font>
+<font color='#555555'>;; <font color='#308080'>@author</font> Jeff Ober &lt;jeffober@gmail.com&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@version</font> 2.0</font>
+<font color='#555555'>;; <font color='#308080'>@location</font> http://static.artfulcode.net/newlisp/json.lsp</font>
+<font color='#555555'>;; <font color='#308080'>@package</font> http://static.artfulcode.net/newlisp/json.qwerty</font>
+<font color='#555555'>;; <font color='#308080'>@description</font> JSON parser and encoder; requires util.lsp (updated for newlisp 10)</font>
+<font color='#555555'>;; &lt;p&gt;Library for parsing JSON data and serializing lisp into JSON.&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;h4&gt;Version history&lt;/h4&gt;</font>
+<font color='#555555'>;; &lt;b&gt;2.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; completely rewrite of decoder (thanks to Andrew Pennebaker for pointing out the bugs in the original)</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.2&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; fixed incompatibilities with newlisp 10</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.1&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; added simple escape routine to outputted string values</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;b&gt;1.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; initial release</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'Json<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Json:lisp->json &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; expression to be converted to JSON</font>
+<font color='#555555'>;; &lt;p&gt;Converts expression &lt;expr&gt; to JSON.  Association lists and</font>
+<font color='#555555'>;; contexts are converted into objects.  Other lists and arrays are</font>
+<font color='#555555'>;; converted into JSON arrays.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (Json:lisp->json '((a 1) (b 2)))</font>
+<font color='#555555'>;; => "&#123; 'A': 1, 'b': 2 &#125;"</font>
+<font color='#555555'>;; (Json:lisp->json '(1 2 3 4 5))</font>
+<font color='#555555'>;; => "[1, 2, 3, 4, 5]"</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>lisp->json lisp<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>case</font> <font color='#AA0000'>(</font>type-of lisp<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"boolean"</font> <font color='#AA0000'>(</font><font color='#0000AA'>if</font> lisp <font color='#008800'>"true"</font> <font color='#008800'>"false"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"quote"</font> <font color='#AA0000'>(</font>lisp->json <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"symbol"</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"'%s'"</font> <font color='#AA0000'>(</font>name lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"string"</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"'%s'"</font> <font color='#AA0000'>(</font>simple-escape lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"integer"</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"float"</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"list"</font> <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font>assoc? lisp<font color='#AA0000'>)</font>
+                <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"&#123; %s &#125;"</font>
+                        <font color='#AA0000'>(</font><font color='#0000AA'>join</font> <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font>pair<font color='#AA0000'>)</font>
+                                     <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"'%s': %s"</font>
+                                             <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>symbol?</font> <font color='#AA0000'>(</font>pair <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                                                 <font color='#AA0000'>(</font>name <font color='#AA0000'>(</font>pair <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                                                 <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#AA0000'>(</font>pair <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                                             <font color='#AA0000'>(</font>lisp->json <font color='#AA0000'>(</font>pair <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                                   lisp<font color='#AA0000'>)</font>
+                              <font color='#008800'>", "</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#008800'>"["</font> <font color='#AA0000'>(</font><font color='#0000AA'>join</font> <font color='#AA0000'>(</font><font color='#0000AA'>map</font> lisp->json lisp<font color='#AA0000'>)</font> <font color='#008800'>", "</font><font color='#AA0000'>)</font> <font color='#008800'>"]"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"array"</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#008800'>"["</font> <font color='#AA0000'>(</font><font color='#0000AA'>join</font> <font color='#AA0000'>(</font><font color='#0000AA'>map</font> lisp->json lisp<font color='#AA0000'>)</font> <font color='#008800'>", "</font><font color='#AA0000'>)</font> <font color='#008800'>"]"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#008800'>"context"</font> <font color='#AA0000'>(</font><font color='#0000AA'>let</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>values '<font color='#AA0000'>(</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                 <font color='#AA0000'>(</font><font color='#0000AA'>dotree</font> <font color='#AA0000'>(</font>s lisp<font color='#AA0000'>)</font>
+                   <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"'%s': %s"</font>
+                                 <font color='#AA0000'>(</font>name s<font color='#AA0000'>)</font>
+                                 <font color='#AA0000'>(</font>lisp->json <font color='#AA0000'>(</font><font color='#0000AA'>eval</font> s<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                         values <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+                 <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"&#123; %s &#125;"</font> <font color='#AA0000'>(</font><font color='#0000AA'>join</font> values <font color='#008800'>", "</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>true</font> <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"invalid lisp->json type: %s"</font> lisp<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>simple-escape str<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{[\n\r]+}</font> str <font color='#008800'>{\n}</font> <font color='#665500'>4</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{'}</font> str <font color='#008800'>{\'}</font> <font color='#665500'>4</font><font color='#AA0000'>)</font>
+  str<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Json:json->lisp &lt;str-json&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;str-json&gt; a valid JSON string</font>
+<font color='#555555'>;; &lt;p&gt;Parses a valid JSON string and returns a lisp structure.</font>
+<font color='#555555'>;; Arrays are converted to lists and objects are converted to </font>
+<font color='#555555'>;; assocation lists.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (Json:json->lisp "[1, 2, 3, 4]")</font>
+<font color='#555555'>;; => (1 2 3 4)</font>
+<font color='#555555'>;; (Json:json->lisp "&#123; 'x': 3, 'y': 4, 'z': [1, 2, 3] &#125;")</font>
+<font color='#555555'>;; => (("x" 3) ("y" 4) ("z" (1 2 3)))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>json->lisp json<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>first</font> <font color='#AA0000'>(</font>lex <font color='#AA0000'>(</font>tokenize json<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> number-re <font color='#AA0000'>(</font><font color='#0000AA'>regex-comp</font> <font color='#008800'>{^([-+\deE.]+)}</font> <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> identifier-re <font color='#AA0000'>(</font><font color='#0000AA'>regex-comp</font> <font color='#008800'>{([$_a-zA-Z][$_a-zA-Z0-9]*)(.*)}</font> <font color='#665500'>4</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>read-number text , matched n<font color='#AA0000'>)</font>
+  "Reads in a number in any Javascript-permissible <font color='#0000AA'>format</font> <font color='#0000AA'>and</font> attempts to
+  convert it to a newLISP float. If the number's absolute value is greater
+  than <font color='#665500'>1e308</font> <font color='#AA0000'>(</font>defined as +/-INF in newLISP<font color='#AA0000'>)</font>, the number is returned as a
+  string."
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> text <font color='#AA0000'>(</font><font color='#0000AA'>trim</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> matched <font color='#AA0000'>(</font><font color='#0000AA'>regex</font> number-re text <font color='#665500'>0x10000</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> n <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> text <font color='#665500'>0</font> <font color='#AA0000'>(</font>matched <font color='#665500'>5</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>></font> <font color='#AA0000'>(</font><font color='#0000AA'>abs</font> <font color='#AA0000'>(</font><font color='#0000AA'>float</font> n<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#665500'>1e308</font><font color='#AA0000'>)</font> n <font color='#AA0000'>(</font><font color='#0000AA'>float</font> n<font color='#AA0000'>)</font><font color='#AA0000'>)</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>read-string text , quot c escaped split-index str<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> quot <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> text<font color='#AA0000'>)</font> str <font color='#008800'>""</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>catch</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>empty?</font> <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> c <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> c quot<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>not</font> escaped<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>throw</font> $idx<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> str c<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> escaped <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>not</font> $it<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> c <font color='#008800'>{\}</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> str text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>read-identifier text , matched<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> text <font color='#AA0000'>(</font><font color='#0000AA'>trim</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> matched <font color='#AA0000'>(</font><font color='#0000AA'>regex</font> identifier-re text <font color='#665500'>0x10000</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>case</font> <font color='#AA0000'>(</font><font color='#0000AA'>nth</font> <font color='#665500'>3</font> matched<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#008800'>"true"</font> <font color='#0000AA'>true</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#008800'>"TRUE"</font> <font color='#0000AA'>true</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#008800'>"false"</font> <font color='#0000AA'>nil</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#008800'>"FALSE"</font> <font color='#0000AA'>nil</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#008800'>"null"</font> <font color='#0000AA'>nil</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#008800'>"NULL"</font> <font color='#0000AA'>nil</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>true</font> <font color='#AA0000'>(</font><font color='#0000AA'>nth</font> <font color='#665500'>3</font> matched<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>nth</font> <font color='#665500'>6</font> matched<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>tokenize text <font color='#AA0000'>(</font>acc '<font color='#AA0000'>(</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> , tok tail n<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> text <font color='#AA0000'>(</font><font color='#0000AA'>trim</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>cond</font>
+    <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>empty?</font> text<font color='#AA0000'>)</font> acc<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>regex</font> <font color='#008800'>{^\s+}</font> text <font color='#665500'>4</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font>tokenize <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{^\s+}</font> text <font color='#008800'>""</font> <font color='#665500'>0</font><font color='#AA0000'>)</font> acc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>regex</font> number-re text <font color='#665500'>0x10000</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#0000AA'>set</font> '<font color='#AA0000'>(</font>tok tail<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>read-number text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>push</font> tok acc <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font>tokenize tail acc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>regex</font> <font color='#008800'>{^['&#034;]}</font> text<font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#0000AA'>set</font> '<font color='#AA0000'>(</font>tok tail<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>read-string text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>push</font> tok acc <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font>tokenize tail acc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>regex</font> <font color='#008800'>[text]^[{}\[\]:,][/text]</font> text<font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> tok <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>case</font> tok
+       <font color='#AA0000'>(</font><font color='#008800'>"&#123;"</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'OPEN_BRACE acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#008800'>"&#125;"</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'CLOSE_BRACE acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#008800'>"["</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'OPEN_BRACKET acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#008800'>"]"</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'CLOSE_BRACKET acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#008800'>":"</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'COLON acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+       <font color='#AA0000'>(</font><font color='#008800'>","</font> <font color='#AA0000'>(</font><font color='#0000AA'>push</font> 'COMMA acc <font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font>tokenize text acc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>true</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>map</font> <font color='#0000AA'>set</font> '<font color='#AA0000'>(</font>tok tail<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>read-identifier text<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font><font color='#0000AA'>push</font> tok acc <font color='#665500'>-1</font><font color='#AA0000'>)</font>
+     <font color='#AA0000'>(</font>tokenize tail acc<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>lex tokens, <font color='#AA0000'>(</font>tree '<font color='#AA0000'>(</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>loc '<font color='#AA0000'>(</font><font color='#665500'>-1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>depth <font color='#665500'>0</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>mark <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#555555'>;; Note: mark is used to match colon-pairings' depth against the current</font>
+  <font color='#555555'>;; depth to prevent commas in a paired value (e.g. foo: [...] or foo: {})</font>
+  <font color='#555555'>;; from popping the stack.</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font><font color='#0000AA'>find</font> <font color='#AA0000'>(</font><font color='#0000AA'>first</font> tokens<font color='#AA0000'>)</font> '<font color='#AA0000'>(</font>OPEN_BRACKET OPEN_BRACE<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#008800'>"A JSON object must be an object or array."</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>tok tokens<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>case</font> tok
+      <font color='#AA0000'>(</font>OPEN_BRACKET
+        <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> depth<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#AA0000'>(</font><font color='#0000AA'>list</font><font color='#AA0000'>)</font> tree loc<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#665500'>-1</font> loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>OPEN_BRACE
+        <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> depth<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#AA0000'>(</font><font color='#0000AA'>list</font><font color='#AA0000'>)</font> tree loc<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#665500'>-1</font> loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>CLOSE_BRACKET
+        <font color='#AA0000'>(</font><font color='#0000AA'>dec</font> depth<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>CLOSE_BRACE
+        <font color='#AA0000'>(</font><font color='#0000AA'>dec</font> depth<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>COLON
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> tree loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font> tree loc<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> <font color='#665500'>-1</font> loc<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> mark depth<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>COMMA
+        <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> mark depth<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> mark <font color='#0000AA'>nil</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>pop</font> loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>true</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>push</font> tok tree loc<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  tree<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> MAIN<font color='#AA0000'>)</font>
+
+
+</pre><center><font face='Arial' size='-3' color='#666666'>syntax highlighting with <a href="http://newlisp.org">newLISP</a>&nbsp;and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a></font></center></body></html>

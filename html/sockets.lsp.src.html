@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "4.01 Transitional"><html><title>Sockets</title><body><pre>
+<font color='#555555'>;; <font color='#308080'>@module</font> Sockets</font>
+<font color='#555555'>;; <font color='#308080'>@author</font> Jeff Ober &lt;jeffober@gmail.com&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@version</font> 1.0</font>
+<font color='#555555'>;; <font color='#308080'>@location</font> http://static.artfulcode.net/newlisp/sockets.lsp</font>
+<font color='#555555'>;; <font color='#308080'>@package</font> http://static.artfulcode.net/newlisp/sockets.qwerty</font>
+<font color='#555555'>;; <font color='#308080'>@description</font> Classes for socket operations (requires newlisp 10)</font>
+<font color='#555555'>;; Sockets are a fast, efficient method for client/server operations. newLisp</font>
+<font color='#555555'>;; has a broad range of functions for dealing with socket-based connections,</font>
+<font color='#555555'>;; many of them somewhat arcane if not familiar with socket jargon. The Sockets</font>
+<font color='#555555'>;; module encapsulates some of this complexity into two simple classes.</font>
+<font color='#555555'>;; The Socket class provides methods for reading, writing, and sending lisp</font>
+<font color='#555555'>;; expressions between client and server processes. Requires newlisp 10+ and</font>
+<font color='#555555'>;; unix sockets.</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; &lt;h4&gt;Version history&lt;/h4&gt;</font>
+<font color='#555555'>;; &lt;b&gt;1.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; initial release (replaces SocketServer module)</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; ; Fork a server</font>
+<font color='#555555'>;; (setf pid</font>
+<font color='#555555'>;;   (fork</font>
+<font color='#555555'>;;     (let ((server (SocketServer "/tmp/newlisp.sock")))</font>
+<font color='#555555'>;;      (:run-server server</font>
+<font color='#555555'>;;        (lambda (client server , request)</font>
+<font color='#555555'>;;          (if client</font>
+<font color='#555555'>;;            (begin</font>
+<font color='#555555'>;;              (setf request (:read-expr client))</font>
+<font color='#555555'>;;              (eval request) ; not safe unless you know your client</font>
+<font color='#555555'>;;              (:write-expr client '(println "Hello, client!"))</font>
+<font color='#555555'>;;              (:close client))</font>
+<font color='#555555'>;;            (println "client connection error: " (net-error))))</font>
+<font color='#555555'>;;        nil ; no operations between connections</font>
+<font color='#555555'>;;        (lambda (err server) (println "An error has occurred: " err))))))</font>
+<font color='#555555'>;;  </font>
+<font color='#555555'>;; (sleep 500) ; give server time to start</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; ; Connect to server process as a client</font>
+<font color='#555555'>;; (let ((socket (Sockets:make-file-socket "/tmp/newlisp.sock")))</font>
+<font color='#555555'>;;   (:write-expr socket '(println "Hello, server!"))</font>
+<font color='#555555'>;;   (setf expr (:read-expr socket))</font>
+<font color='#555555'>;;   (:close socket))</font>
+<font color='#555555'>;; (eval expr) ; not safe unless you know your server</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; (destroy pid) ; clean up</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'Sockets<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Sockets:make-file-socket &lt;str-file&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;str-file&gt; a file to use as a socket file</font>
+<font color='#555555'>;; &lt;p&gt;Creates a new Socket instance using &lt;str-file&gt;&lt;/p&gt;.</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf socket (Sockets:create-socket-file "/tmp/my_app.sock"))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>make-file-socket file<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>Socket:Socket <font color='#AA0000'>(</font><font color='#0000AA'>net-connect</font> file<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Sockets:make-network-socket &lt;str-host&gt; &lt;int-port&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;str-host&gt; the HTTP hostname of the remote server</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-port&gt; the remote server's port number to connect to</font>
+<font color='#555555'>;; &lt;p&gt;Creates a new Socket instance connected to &lt;str-host&gt;:&lt;int-port&gt;.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (setf socket (Sockets:create-network-soket "http://www.artfulcode.net" 80))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>make-network-socket host port<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>Socket:Socket <font color='#AA0000'>(</font><font color='#0000AA'>net-connect</font> host port<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'MAIN<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (Socket &lt;socket&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;socket&gt; an open socket file descriptor</font>
+<font color='#555555'>;; &lt;p&gt;A Socket is a wrapper around a socket file descriptor and uses the</font>
+<font color='#555555'>;; built-in net-* functions to manage socket operations.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:Socket socket<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> socket<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:socket &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Returns the socket file descriptor.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:socket inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:close &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Closes the socket connection.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:close inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>net-close</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:peek &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Returns the number of bytes ready to be read from the socket.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:peek inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:peek <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:ready? &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Returns true if the socket is ready for reading.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:ready? inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>not</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> <font color='#AA0000'>(</font>:peek inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:write &lt;inst&gt; &lt;str-message&gt; [&lt;int-chunk-size&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;str-message&gt; the message to send</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-chunk-size&gt; optional; sends message in chunks of size &lt;int-chunk-size&gt;</font>
+<font color='#555555'>;; &lt;p&gt;Sends &lt;str-message&gt; along the Socket. If optional &lt;int-chunk-size&gt; is</font>
+<font color='#555555'>;; specified, sends the message in chunks.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:write inst message chunk-size , sent<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>if-not</font> chunk-size
+    <font color='#AA0000'>(</font><font color='#0000AA'>net-send</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font> message<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> message<font color='#AA0000'>)</font>
+              <font color='#AA0000'>(</font><font color='#0000AA'>inc</font> sent <font color='#AA0000'>(</font><font color='#0000AA'>net-send</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font>
+                                  <font color='#AA0000'>(</font><font color='#0000AA'>slice</font> message sent<font color='#AA0000'>)</font>
+                                  chunk-size<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      sent<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:read-chunk &lt;inst&gt; &lt;int-bytes&gt; [&lt;block&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-bytes&gt; the number of bytes to read</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;block&gt; optional; if explicitly nil, does not block for bytes to be available</font>
+<font color='#555555'>;; &lt;p&gt;Blocks until a maximum of &lt;int-bytes&gt; are available to read from the</font>
+<font color='#555555'>;; socket and then returns the resulting string. If &lt;blocks&gt; is explicitly</font>
+<font color='#555555'>;; passed as nil, returns nil when no bytes are available to read.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:read-chunk inst bytes <font color='#AA0000'>(</font>block <font color='#0000AA'>true</font><font color='#AA0000'>)</font> , bytes-read buf<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>or</font> block <font color='#AA0000'>(</font>:ready? inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> bytes-read <font color='#AA0000'>(</font><font color='#0000AA'>net-receive</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font> buf bytes<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font><font color='#0000AA'>zero?</font> bytes-read<font color='#AA0000'>)</font>
+      buf<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:read &lt;inst&gt; [&lt;chunk-size&gt; [&lt;block&gt;]])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;chunk-size&gt; the number of bytes to read at a time (default is 512)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;block&gt; whether to block for data (default is true)</font>
+<font color='#555555'>;; &lt;p&gt;Reads from the socket until there is nothing left to read. Will block</font>
+<font color='#555555'>;; until something is available to read unless block is nil. This can lead</font>
+<font color='#555555'>;; to an indefinitely blocking read if neither end closes the connection.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:read inst <font color='#AA0000'>(</font>chunk-size <font color='#665500'>512</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>block <font color='#0000AA'>true</font><font color='#AA0000'>)</font> , buf str<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#008800'>""</font> str <font color='#008800'>""</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>while</font> <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#AA0000'>(</font>:read-chunk inst chunk-size<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> str buf<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  str<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:read-line &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Reads one line from the socket. Read-line will continue to read from</font>
+<font color='#555555'>;; socket until and end-line character (\n or \r or both) is found. This</font>
+<font color='#555555'>;; is not as fast as :read or :read-chunk, as it reads byte-by-byte, and</font>
+<font color='#555555'>;; should not be used unless the source is trusted!&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:read-line inst , buf str<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#008800'>""</font> str <font color='#008800'>""</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>while</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>!=</font> buf <font color='#008800'>"&#092;n"</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#AA0000'>(</font>:read-chunk inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> str buf<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>replace</font> <font color='#008800'>{(\s*$)}</font> str <font color='#008800'>""</font> <font color='#665500'>4</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:write-expr &lt;inst&gt; &lt;expr&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;expr&gt; a quoted lisp expression</font>
+<font color='#555555'>;; &lt;p&gt;Sends &lt;expr&gt; along the socket. The other end of the socket may</font>
+<font color='#555555'>;; then use :read-expr to read the expression back into lisp. Optionally,</font>
+<font color='#555555'>;; &lt;expr&gt; may be a string, in which case it will be converted to the</font>
+<font color='#555555'>;; expression '(string &lt;expr&gt;). Combined with :read-expr, this provides a</font>
+<font color='#555555'>;; simple way to move complex data across a socket connection.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:write-expr inst expr<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>:write inst <font color='#AA0000'>(</font><font color='#0000AA'>string</font> <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>string?</font> expr<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>list</font> 'string expr<font color='#AA0000'>)</font> expr<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:read-expr &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of Socket</font>
+<font color='#555555'>;; &lt;p&gt;Reads an expression from the socket. Returns a valid lisp expression.</font>
+<font color='#555555'>;; This function will block until a valid lisp expression is encountered.</font>
+<font color='#555555'>;; Combined with :write-expr, this provides a simple way to move complex</font>
+<font color='#555555'>;; data across a socket connection.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>Socket:read-expr inst , buf src expr<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#008800'>""</font> src <font color='#008800'>""</font> expr <font color='#008800'>""</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>while</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>not</font> <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> expr <font color='#AA0000'>(</font><font color='#0000AA'>read-expr</font> src 'MAIN <font color='#0000AA'>nil</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+              <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> buf <font color='#AA0000'>(</font>:read-chunk inst <font color='#665500'>1</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>write-buffer</font> src buf<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  expr<font color='#AA0000'>)</font>
+
+
+<font color='#AA0000'>(</font><font color='#0000AA'>new</font> 'Socket 'SocketServer<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (SocketServer &lt;int-port&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (SocketServer &lt;str-file&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;int-port&gt; the port number to listen on</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;str-file&gt; alternately, the socket file to listen on</font>
+<font color='#555555'>;; &lt;p&gt;Creates a new SocketServer from a port number or socket file path.</font>
+<font color='#555555'>;; SocketServer inherits directly from Socket, so all I/O methods from </font>
+<font color='#555555'>;; Socket are available to SocketServer instances. Throws an error if it</font>
+<font color='#555555'>;; encounters a problem creating the socket.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>SocketServer:SocketServer p , socket<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> socket
+    <font color='#AA0000'>(</font><font color='#0000AA'>cond</font>
+      <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>integer?</font> p<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-listen</font> p<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>string?</font> p<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>number?</font> p<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-listen</font> <font color='#AA0000'>(</font><font color='#0000AA'>int</font> p<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-listen</font> p<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>true</font> <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#008800'>"Invalid port or socket file path."</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>context</font><font color='#AA0000'>)</font> socket<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:accept &lt;inst&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of SocketServer</font>
+<font color='#555555'>;; &lt;p&gt;Blocks until a connection is available and returns a new Socket</font>
+<font color='#555555'>;; instance for the resulting connection.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>SocketServer:accept inst<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> socket <font color='#AA0000'>(</font><font color='#0000AA'>net-accept</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font>Socket socket<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:until-connection-ready &lt;inst&gt; &lt;func&gt; [&lt;poll-length&gt;])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of SocketServer</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func&gt; a function to call while awaiting a connection</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;poll-length&gt; the number of ms to wait for a connection on each poll</font>
+<font color='#555555'>;; &lt;p&gt;Repeatedly calls &lt;func&gt; until a client connection is ready on the socket.</font>
+<font color='#555555'>;; Optional parameter &lt;poll-timeout&gt; (milliseconds) controls the length of time</font>
+<font color='#555555'>;; to wait for a connection before calling func. The function is passed the</font>
+<font color='#555555'>;; server instance.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>SocketServer:until-connection-ready inst func <font color='#AA0000'>(</font>poll-length <font color='#665500'>100</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>until</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-select</font> <font color='#AA0000'>(</font>:socket inst<font color='#AA0000'>)</font> <font color='#008800'>"read"</font> poll-length<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>func inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:on-connection &lt;inst&gt; &lt;func&gt;)</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of SocketServer</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func&gt; a function to call when a client connects</font>
+<font color='#555555'>;; &lt;p&gt;Blocks for a client connection and then calls &lt;func&gt; with the client</font>
+<font color='#555555'>;; socket and the server instance. If an error occurs accepting the connection,</font>
+<font color='#555555'>;; nil is passed to &lt;func&gt;. The error is then available via net-error.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>SocketServer:on-connection inst func<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>func <font color='#AA0000'>(</font>:accept inst<font color='#AA0000'>)</font> inst<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (:run-server &lt;inst&gt; &lt;func-connect&gt; [&lt;func-wait&gt; [&lt;func-err&gt;] [&lt;poll-length&gt;]])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;inst&gt; an instance of SocketServer</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func-connect&gt; called when a client connects</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func-wait&gt; called repeatedly while awaiting a client</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;func-err&gt; called when a server error occurs</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;poll-length&gt; the number of ms to wait for a connection on each poll</font>
+<font color='#555555'>;; &lt;p&gt;Runs the server in a loop. If &lt;func-connect&gt; is provided, it will be</font>
+<font color='#555555'>;; called in the event of a server error. It is passed the error string and</font>
+<font color='#555555'>;; server instance. If &lt;func-wait&gt; is provided, it will be called repeatedly</font>
+<font color='#555555'>;; until a client connection is available. The only required parameters are the</font>
+<font color='#555555'>;; SocketServer instance and &lt;func-connect&gt;, which will be called when a client</font>
+<font color='#555555'>;; connection is accepted. It will be passed the client socket and the server</font>
+<font color='#555555'>;; instance. If &lt;func-err&gt; is not defined, the server will throw an error when</font>
+<font color='#555555'>;; an error occurs.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>SocketServer:run-server inst on-connect until-connect on-error <font color='#AA0000'>(</font>poll-length <font color='#665500'>100</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>while</font> <font color='#0000AA'>true</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>cond</font>
+      <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> on-error<font color='#AA0000'>)</font> <font color='#AA0000'>(</font>on-error <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> server<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>net-error</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font>until-connect
+        <font color='#AA0000'>(</font>:until-connection-ready inst until-connect poll-length<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font>:on-connection inst on-connect<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>true</font> <font color='#AA0000'>(</font>:on-connection inst on-connect<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+
+
+
+
+
+
+
+
+
+
+</pre><center><font face='Arial' size='-3' color='#666666'>syntax highlighting with <a href="http://newlisp.org">newLISP</a>&nbsp;and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a></font></center></body></html>

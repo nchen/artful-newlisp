@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "4.01 Transitional"><html><title>qwerty</title><body><pre>
+<font color='#555555'>;; <font color='#308080'>@module</font> qwerty</font>
+<font color='#555555'>;; <font color='#308080'>@author</font> Jeff Ober &lt;jeffober@gmail.com&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@version</font> 1.0</font>
+<font color='#555555'>;; <font color='#308080'>@location</font> http://static.artfulcode.net/newlisp/qwerty.lsp</font>
+<font color='#555555'>;; <font color='#308080'>@description</font> Provides a dependency-managing library loading mechanism (requires newlisp 10)</font>
+<font color='#555555'>;; &lt;p&gt;This module replaces nlmod, providing a simple mechanism for package</font>
+<font color='#555555'>;; dependencies. qwerty supports packages with multiple files and directories.&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;All Artful Code modules (apart from qwerty itself, which must be loaded</font>
+<font color='#555555'>;; manually) have a .qwerty package definition.&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;The provided macro, &lt;define-package&gt;, is used to register a package with</font>
+<font color='#555555'>;; qwerty. This should be saved in a file named &lt;module-name&gt;.qwerty, located in</font>
+<font color='#555555'>;; a directory in the list of registry paths (&lt;qwerty:registry-path&gt;).&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;A package must be located in one of the &lt;qwerty:module-path&gt; directories.</font>
+<font color='#555555'>;; If the package was defined without any files, qwerty assumes that the file's</font>
+<font color='#555555'>;; name is the same as the module's (e.g., &lt;my-module&gt;.lsp).&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;h4&gt;Version history&lt;/h4&gt;</font>
+<font color='#555555'>;; &lt;b&gt;1.0&lt;/b&gt;</font>
+<font color='#555555'>;; &amp;bull; initial release</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (load "/path/to/qwerty.lsp")</font>
+<font color='#555555'>;; </font>
+<font color='#555555'>;; ; Load Artful Code libraries for a CGI application</font>
+<font color='#555555'>;; (push "/path/to/artfulcode/modules" qwerty:module-path)</font>
+<font color='#555555'>;; (push "/path/to/artfulcode/registry" qwerty:registry-path)</font>
+<font color='#555555'>;; (qwerty:load-package "request" "response" "element" "mysql")</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> pkgdepends:pkgdepends<font color='#AA0000'>)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> pkgfiles:pkgfiles<font color='#AA0000'>)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> pkgloaded:pkgloaded<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'qwerty<font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>setf</font> registry-path <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>append</font> <font color='#AA0000'>(</font><font color='#0000AA'>env</font> <font color='#008800'>"NEWLISPDIR"</font><font color='#AA0000'>)</font> <font color='#008800'>"/registry"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>setf</font> module-path <font color='#AA0000'>(</font><font color='#0000AA'>list</font> <font color='#AA0000'>(</font><font color='#0000AA'>append</font> <font color='#AA0000'>(</font><font color='#0000AA'>env</font> <font color='#008800'>"NEWLISPDIR"</font><font color='#AA0000'>)</font> <font color='#008800'>"/modules"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>register-package str-name files deps<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>pkgfiles str-name files<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>pkgdepends str-name deps<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>find-in-path str-search lst-paths , found<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> found
+    <font color='#AA0000'>(</font><font color='#0000AA'>catch</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>begin</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>path lst-paths<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>file?</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> path <font color='#008800'>"/"</font> str-search<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+            <font color='#AA0000'>(</font><font color='#0000AA'>throw</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> path <font color='#008800'>"/"</font> str-search<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>throw</font> <font color='#0000AA'>nil</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>or</font> found <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"Unable to locate %s&#059; tried %s."</font> str-search <font color='#AA0000'>(</font><font color='#0000AA'>string</font> lst-paths<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>find-registry-path str-name<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>find-in-path <font color='#AA0000'>(</font><font color='#0000AA'>string</font> str-name <font color='#008800'>".qwerty"</font><font color='#AA0000'>)</font> registry-path<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>find-module-path str-name<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font>find-in-path <font color='#AA0000'>(</font><font color='#0000AA'>string</font> str-name <font color='#008800'>".lsp"</font><font color='#AA0000'>)</font> module-path<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>find-package-path file-list , found<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> found
+    <font color='#AA0000'>(</font><font color='#0000AA'>catch</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>path module-path<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>when</font> <font color='#AA0000'>(</font><font color='#0000AA'>for-all</font> <font color='#AA0000'>(</font>fn <font color='#AA0000'>(</font>f<font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>file?</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> path <font color='#008800'>"/"</font> f<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font> file-list<font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>throw</font> path<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#0000AA'>nil</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+  found<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (qwerty:load-package &lt;pkg-name&gt; [&lt;pkg-name-2&gt; ...])</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;pkg-name&gt; one or more package names to load</font>
+<font color='#555555'>;; &lt;p&gt;Loads a package and its dependencies.  Throws an error if &lt;pkg-name&gt;, its</font>
+<font color='#555555'>;; component files, or any of its dependencies fail to load.&lt;/p&gt;</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define</font> <font color='#AA0000'>(</font>load-package<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>doargs</font> <font color='#AA0000'>(</font>str-name<font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> <font color='#AA0000'>(</font>pkgloaded str-name<font color='#AA0000'>)</font>
+      <font color='#555555'>;; First, try to load the package definition</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>local</font> <font color='#AA0000'>(</font>file<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> file <font color='#AA0000'>(</font>find-registry-path str-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>load</font> file<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#555555'>;; Now that package is defined, load dependencies</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>dep <font color='#AA0000'>(</font>pkgdepends str-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font>load-package dep<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#555555'>;; Now load package files</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>local</font> <font color='#AA0000'>(</font>files file path<font color='#AA0000'>)</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> files <font color='#AA0000'>(</font>pkgfiles str-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+        <font color='#555555'>;; We want all package files to come from the same path</font>
+        <font color='#AA0000'>(</font><font color='#0000AA'>if</font> <font color='#AA0000'>(</font><font color='#0000AA'>and</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> <font color='#665500'>1</font> <font color='#AA0000'>(</font><font color='#0000AA'>length</font> files<font color='#AA0000'>)</font><font color='#AA0000'>)</font> <font color='#AA0000'>(</font><font color='#0000AA'>=</font> str-name <font color='#AA0000'>(</font><font color='#0000AA'>first</font> files<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#555555'>;; Case 1: single file package, named for itself</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>load</font> <font color='#AA0000'>(</font>find-module-path <font color='#AA0000'>(</font><font color='#0000AA'>first</font> files<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#555555'>;; Case 2: multi-file package; find a single directory will all files in it</font>
+          <font color='#AA0000'>(</font><font color='#0000AA'>begin</font>
+            <font color='#AA0000'>(</font><font color='#0000AA'>setf</font> path <font color='#AA0000'>(</font>find-package-path files<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+            <font color='#AA0000'>(</font><font color='#0000AA'>unless</font> path <font color='#AA0000'>(</font><font color='#0000AA'>throw-error</font> <font color='#AA0000'>(</font><font color='#0000AA'>format</font> <font color='#008800'>"Unable to locate package directory for %s"</font> str-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+            <font color='#AA0000'>(</font><font color='#0000AA'>dolist</font> <font color='#AA0000'>(</font>file files<font color='#AA0000'>)</font>
+              <font color='#AA0000'>(</font><font color='#0000AA'>load</font> <font color='#AA0000'>(</font><font color='#0000AA'>string</font> path <font color='#008800'>"/"</font> file <font color='#008800'>".lsp"</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#555555'>;; Prevent module reload</font>
+    <font color='#AA0000'>(</font>pkgloaded str-name <font color='#0000AA'>true</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>context</font> 'MAIN<font color='#AA0000'>)</font>
+
+<font color='#555555'>;; <font color='#308080'>@syntax</font> (define-package &lt;pkg-name&gt; (files &lt;file-1&gt; &lt;file-2&gt; ...) (depends &lt;dep-1&gt; &lt;dep-2&gt; ...))</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;files&gt; a list of files that make up the package</font>
+<font color='#555555'>;; <font color='#308080'>@param</font> &lt;depends&gt; a list of packages on which this package depends</font>
+<font color='#555555'>;; &lt;p&gt;Defines a new package. The package will be named &lt;pkg-name&gt;. If a list of</font>
+<font color='#555555'>;; files is not provided, it is assumed that the package contains only one file</font>
+<font color='#555555'>;; that is named &lt;pkg-name&gt;.lsp. Otherwise, a list of file names may be provided</font>
+<font color='#555555'>;; that are assumed to be in the same directory (the first found in the path).&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;The files may be preceded by a sub-path, e.g. (files "/foo-package/foo1.lsp"</font>
+<font color='#555555'>;; "foo-package/foo2.lsp" "foo-package/sub-package/bar.lsp"), to permit an</font>
+<font color='#555555'>;; arbitrarly deeply structured package. Files are listed in the order in which</font>
+<font color='#555555'>;; they should be loaded.&lt;/p&gt;</font>
+<font color='#555555'>;; &lt;p&gt;Dependencies for the package are listed similarly, as a list beginning with</font>
+<font color='#555555'>;; the symbol 'depends. Both component files and dependencies are optional. File</font>
+<font color='#555555'>;; extensions are left off names in both lists.&lt;/p&gt;</font>
+<font color='#555555'>;; <font color='#308080'>@example</font></font>
+<font color='#555555'>;; (define-package "my-app"</font>
+<font color='#555555'>;;    (files "my-app/lib" "my-app/macros" "my-app/main")</font>
+<font color='#555555'>;;    (depends "cgi" "crypto"))</font>
+<font color='#AA0000'>(</font><font color='#0000AA'>define-macro</font> <font color='#AA0000'>(</font>define-package<font color='#AA0000'>)</font>
+  <font color='#AA0000'>(</font><font color='#0000AA'>letex</font> <font color='#AA0000'>(</font><font color='#AA0000'>(</font>str-name <font color='#AA0000'>(</font><font color='#0000AA'>args</font> <font color='#665500'>0</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font>files <font color='#AA0000'>(</font><font color='#0000AA'>assoc</font> 'files <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+          <font color='#AA0000'>(</font>deps <font color='#AA0000'>(</font><font color='#0000AA'>assoc</font> 'depends <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> <font color='#AA0000'>(</font><font color='#0000AA'>args</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+    <font color='#AA0000'>(</font>qwerty:register-package str-name
+      <font color='#AA0000'>(</font><font color='#0000AA'>if</font> 'files <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> 'files<font color='#AA0000'>)</font> '<font color='#AA0000'>(</font>str-name<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+      <font color='#AA0000'>(</font><font color='#0000AA'>if</font> 'deps <font color='#AA0000'>(</font><font color='#0000AA'>rest</font> 'deps<font color='#AA0000'>)</font> '<font color='#AA0000'>(</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+<font color='#AA0000'>(</font><font color='#0000AA'>constant</font> <font color='#AA0000'>(</font><font color='#0000AA'>global</font> 'define-package<font color='#AA0000'>)</font><font color='#AA0000'>)</font>
+
+
+</pre><center><font face='Arial' size='-3' color='#666666'>syntax highlighting with <a href="http://newlisp.org">newLISP</a>&nbsp;and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a></font></center></body></html>

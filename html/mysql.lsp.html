@@ -1,0 +1,362 @@
+<!DOCTYPE HTML PUBLIC "HTML 4.01 Transitional">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>mysql.lsp</title>
+
+<link rel="stylesheet" type="text/css" href="newlispdoc.css" />
+</head>
+
+<body style="margin: 20px;" text="#111111" bgcolor="#FFFFFF" 
+			link="#376590" vlink="#551A8B" alink="#ffAA28">
+<blockquote>
+<center><h1>mysql.lsp</h1></center>
+<p><a href="index.html">Module index</a></p><a href="mysql.lsp.src.html">source</a>&nbsp;<br/>
+<h2>Module:&nbsp;Mysql</h2><b>Author: </b>Jeff Ober <jeffober@gmail.com><br/>
+<b>Version: </b>1.05 beta<br/>
+<b>Location: </b><a href="http://static.artfulcode.net/newlisp/mysql.lsp">http://static.artfulcode.net/newlisp/mysql.lsp</a><br/>
+<b>package: </b>http://static.artfulcode.net/newlisp/mysql.qwerty<br/>
+<p>A new MySQL module to replace the distribution standard module (requires newlisp 10).</p>
+ The Mysql module has been written from scratch utilizing some of the more
+ recent features of newLisp, such as FOOP and reference returns. One of its
+ major design goals was to simplify use as well as broaden the features of
+ the standard MySQL module, while at the same time allowing the creation of
+ new, anonymous instances at run-time.
+<br/><br/>
+ The Mysql module differs from the distribution standard module in several
+ important ways. Most obviously, it uses FOOP wrappers for MySQL types. It
+ also requires clients to free results instances; in the standard module,
+ only the base MYSQL instance itself must be freed (using MySQL:close-db).
+<br/><br/>
+ The significance of this is that it is much simpler to create multiple
+ connections (without having to duplicate the entire context at compile
+ time). Result sets are completely independent of each other, and several may
+ be maintained in any state at once. This also means that a spawned process
+ may be given its own Mysql instance to use without having to worry about
+ other processes' instances interfering. Using the standard module, the
+ entire context would need to be cloned at compile time and given a static
+ symbol reference (e.g., (new 'MySQL 'db)) in order to run multiple instances
+ or connections to a server.
+<br/><br/>
+ Moreover, because this module uses unpack and MySQL C API accessor
+ functions, there is no need for the client to calculate member offsets in
+ MySQL compound types. So long as newLisp was compiled for the same target as
+ the libmysqlclient library (both are 32 bit or both are 64 bit), everything
+ should work out of the box. Additionally, MySQL errors are now checked in
+ the connect and query functions and re-thrown as interpreter errors. Instead
+ of checking for nil returns and a using MySQL:error to get the error
+ message, standard error  handling with the catch function may be used.
+<br/><br/>
+ This module has been tested with MySQL version 5 and 5.1 and newLisp version
+ 10.0.1. It requires newLisp 10.0 or later.
+<br/><br/>
+ <h3>Changelog</h3>
+ <b>1.05</b>
+ &bull; Mysql:query now checks if client mistakenly sent single, non-list, argument for format-args
+<br/><br/>
+ <b>1.04</b>
+ &bull; fixed error in documentation example
+ &bull; changed Mysql:query to allow lists as format parameters
+ &bull; backward-incompatible change to Mysql:query parameter list
+ &bull; added Mysql:coerce-type as an independent function
+<br/><br/>
+ <b>1.03</b>
+ &bull; fixed truncation bug when inserting binary data in Mysql:query
+<br/><br/>
+ <b>1.02</b>
+ &bull; field types are now correctly distinguished when MySQL is compiled with 64-bit pointers
+ &bull; refactored MysqlResult:get-row
+<br/><br/>
+ <b>1.01</b>
+ &bull; fixed invalid function in Mysql:tables, Mysql:fields, and Mysql:databases
+<br/><br/>
+ <b>1.0</b>
+ &bull; initial release
+<br/><br/>
+ <h3>Known bugs</h3>
+ &bull; None (at the moment); <i>please let me know if you find any!</i>
+<br/><br/>
+<br/><br/>
+<b>example:</b><blockquote><pre> &bull; Imperative usage
+ 
+ (setf db (Mysql)) ; initialize Mysql instance
+ (:connect db "localhost" "user" "secret" "my_database") ; connect to a server
+ (setf result (:query db "SELECT * FROM some_table")) ; evaluate a query
+ (setf rows (:fetch-all result)) ; generate a result
+ (:close-db db) ; free the database
+ 
+ &bull; Functional usage with the 'mysql context
+ 
+ (mysql:on-connect '("localhost" "user" "secret" "my_database")
+   (lambda (db err)
+     (if err (throw-error err))
+     (mysql:row-iter db "SELECT * FROM some_table" nil
+       (lambda (row)
+         (println row)))))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_Mysql"></a><h3><font color=#CC0000>Mysql</font></h3>
+<b>syntax: (<font color=#CC0000>Mysql</font>)</b><br/>
+ <p>Returns a new Mysql instance that can safely be used in tandem with other
+ Mysql instances.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_connect"></a><h3><font color=#CC0000>:connect</font></h3>
+<b>syntax: (<font color=#CC0000>:connect</font> <em>Mysql-instance</em> <em>str-host</em> <em>str-user</em> <em>str-pass</em> <em>str-db</em> <em>int-port</em> <em>str-socket</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>str-host</em> - the hostname to connect to<br/>
+<b>parameter: </b><em>str-user</em> - a MySQL username<br/>
+<b>parameter: </b><em>str-pass</em> - <em>str-user</em>'s password<br/>
+<b>parameter: </b><em>str-db</em> - the database to initially connect to<br/>
+<b>parameter: </b><em>int-port</em> - (optional) port number of the MySQL server<br/>
+<b>parameter: </b><em>int-str</em> - (optional) socket file to connect through<br/>
+ <p>Connects an initialized Mysql instance to a database. Returns <em>true</em> if
+ successful logging in, <em>nil</em> if not.</p>
+<b>example:</b><blockquote><pre> (setf db (Mysql))
+ (:connect db "localhost" "user" "secret" "my-database")
+ =&gt; true</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_close"></a><h3><font color=#CC0000>:close</font></h3>
+<b>syntax: (<font color=#CC0000>:close</font> <em>Mysql-instance</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+ <p>Closes the connection and frees any memory used. This does <em>not</em> free the memory
+ used by results sets from this connection.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_error"></a><h3><font color=#CC0000>:error</font></h3>
+<b>syntax: (<font color=#CC0000>:error</font> <em>Mysql-instance</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+ <p>Returns the last error message as a string or <em>nil</em> if there is none.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_coerce-type"></a><h3><font color=#CC0000>:coerce-type</font></h3>
+<b>syntax: (<font color=#CC0000>:coerce-type</font> <em>Mysql-instance</em> <em>object</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>object</em> - a newLisp object<br/>
+ <p>Coerces <em>object</em> into something safe to use in a SQL statement. Lists are
+ converted into MySQL lists (e.g. '("foo" "bar" "baz") to
+ (<tt>foo</tt>, <tt>bar</tt>, <tt>baz</tt>)) and string values are escaped. This is a helper
+ function for <em>Mysql:query</em>.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_query"></a><h3><font color=#CC0000>:query</font></h3>
+<b>syntax: (<font color=#CC0000>:query</font> <em>Mysql-instance</em> <em>str-statement</em> [<em>lst-format-args</em>])</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>str-statement</em> - a SQL statement to execute<br/>
+<b>parameter: </b><em>lst-format-args</em> - format arguments to the SQL statement<br/>
+ <p>Executes <em>str-statement</em>. Throws an error if the statement fails with the
+ reason. If the statement returns results, a <em>MysqlResult</em> class instance is
+ returned. Otherwise, returns the number of affected rows.</p>
+ <p>If <em>lst-format-args</em> is specified, all parameters are escaped (as
+ necessary) to generate safe, valid SQL. No quoting of values is required in
+ the format string; quotes are inserted as needed. To generate a
+ NULL in the SQL statement, pass <em>nil</em> or the string "NULL".</p>
+<b>example:</b><blockquote><pre> (:query db "SELECT name, employee_id FROM employees")
+ =&gt; (MysqlResult 1069216)
+ 
+ (:query db "DELETE FROM employees WHERE fired = 1")
+ =&gt; 14
+ 
+ (:query db '("SELECT id FROM employees WHERE name = %s" '("Johnson, John")))
+ ; SQL generated: SELECT id FROM employees WHERE name = 'Johnson, John'
+ =&gt; (MysqlResult 1069216)</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="_insert-id"></a><h3><font color=#CC0000>:insert-id</font></h3>
+<b>syntax: (<font color=#CC0000>:insert-id</font> <em>Mysql-instance</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+ <p>Returns the id of the last inserted row when the target table contains
+ an AUTOINCREMENT field.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_affected-rows"></a><h3><font color=#CC0000>:affected-rows</font></h3>
+<b>syntax: (<font color=#CC0000>:affected-rows</font> <em>Mysql-instance</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+ <p>Returns the number of rows affected by the most recent query.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_escape"></a><h3><font color=#CC0000>:escape</font></h3>
+<b>syntax: (<font color=#CC0000>:escape</font> <em>Mysql-instance</em> <em>str-value</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>str-value</em> - the string to escape<br/>
+ <p>Escapes a string to assure safety for use in a SQL statement.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_databases"></a><h3><font color=#CC0000>:databases</font></h3>
+<b>syntax: (<font color=#CC0000>:databases</font> <em>Mysql-instance</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+ <p>Returns a list of the databases on this server.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_tables"></a><h3><font color=#CC0000>:tables</font></h3>
+<b>syntax: (<font color=#CC0000>:tables</font> <em>Mysql-instance</em> <em>str-database</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>str-database</em> - (optional) the database to query for tables<br/>
+ <p>Returns a list of tables available on this server. If <em>str-database</em> is
+ provided, the list of tables will be limited to that database.
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_fields"></a><h3><font color=#CC0000>:fields</font></h3>
+<b>syntax: (<font color=#CC0000>:fields</font> <em>Mysql-instance</em> <em>str-table</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - an instance of the Mysql class<br/>
+<b>parameter: </b><em>str-table</em> - the table to display<br/>
+ <p>Returns metadata about the fields in <em>str-table</em>. The data is the result
+ of a <tt>SHOW FIELDS</tt> query.</p>
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_MysqlResult"></a><h3><font color=#CC0000>MysqlResult</font></h3>
+<b>syntax: (<font color=#CC0000>MysqlResult</font> <em>int-pointer</em>)</b><br/>
+<b>parameter: </b><em>int-pointer</em> - a pointer to a MYSQL_RES struct<br/>
+ <p>Objects of this class are returned by Mysql:query as a result of queries
+ that generate result sets. This class is not generally instantiated directly
+ by the client.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_free"></a><h3><font color=#CC0000>:free</font></h3>
+<b>syntax: (<font color=#CC0000>:free</font> <em>MysqlResult-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlResult-instance</em> - an instance of the MysqlResult class<br/>
+ <p>Frees the memory used by a result. Must be called for each <em>MysqlResult</em>
+ generated, even if unused.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_num-rows"></a><h3><font color=#CC0000>:num-rows</font></h3>
+<b>syntax: (<font color=#CC0000>:num-rows</font> <em>MysqlResult-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlResult-instance</em> - an instance of the MysqlResult class<br/>
+ <p>Returns the number of results in this result.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_fields"></a><h3><font color=#CC0000>:fields</font></h3>
+<b>syntax: (<font color=#CC0000>:fields</font> <em>MysqlResult-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlResult-instance</em> - an instance of the MysqlResult class<br/>
+ <p>Returns a list of MysqlField instances corresponding to the columns in
+ this result.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_fetch-row"></a><h3><font color=#CC0000>:fetch-row</font></h3>
+<b>syntax: (<font color=#CC0000>:fetch-row</font> <em>MysqlResult-instance</em> <em>as-assoc</em>)</b><br/>
+<b>parameter: </b><em>MysqlResult-instance</em> - an instance of the MysqlResult class<br/>
+<b>parameter: </b><em>as-assoc</em> - (optional) whether to return results as a list or association list<br/>
+ <p>Returns one row from this result. If <em>as-assoc</em> is true, the results will
+ be returned as an association list (true by default). If this is the final row
+ in the result set, the MysqlResult instance is automatically freed.</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_fetch-all"></a><h3><font color=#CC0000>:fetch-all</font></h3>
+<b>syntax: (<font color=#CC0000>:fetch-all</font> <em>MysqlResult-instance</em> <em>as-assoc</em>)</b><br/>
+<b>parameter: </b><em>MysqlResult-instance</em> - an instance of the MysqlResult class<br/>
+<b>parameter: </b><em>as-assoc</em> - (optional) whether to return results as a list or association list<br/>
+ <p>Returns all rows from this result. If <em>as-assoc</em> is true, the results
+ will be returned as an association list (true by default).</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_MysqlField"></a><h3><font color=#CC0000>MysqlField</font></h3>
+<b>syntax: (<font color=#CC0000>MysqlField</font> <em>int-pointer</em>)</b><br/>
+<b>parameter: </b><em>int-pointer</em> - a pointer to a MYSQL_FIELD struct<br/>
+ <p>Objects of this class are returned by MysqlResult:fields.  It is used
+ internally in generating result rows. This class is not generally
+ instantiated directly by the client.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_name"></a><h3><font color=#CC0000>:name</font></h3>
+<b>syntax: (<font color=#CC0000>:name</font> <em>MysqlField-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlField-instance</em> - an instance of the MysqlField class<br/>
+ <p>Returns the name of this field (or its alias).</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_table"></a><h3><font color=#CC0000>:table</font></h3>
+<b>syntax: (<font color=#CC0000>:table</font> <em>MysqlField-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlField-instance</em> - an instance of the MysqlField class<br/>
+ <p>Returns this field's table (or its alias).</p>
+
+<br/><br/><center>&sect;</center><br/>
+<a name="_type"></a><h3><font color=#CC0000>:type</font></h3>
+<b>syntax: (<font color=#CC0000>:type</font> <em>MysqlField-instance</em>)</b><br/>
+<b>parameter: </b><em>MysqlField-instance</em> - an instance of the MysqlField class<br/>
+ <p>Returns this field's type.</p>
+
+
+
+<br/><br/><center>&sect;</center><br/>
+<a name="mysql_on-connect"></a><h3><font color=#CC0000>mysql:on-connect</font></h3>
+<b>syntax: (<font color=#CC0000>mysql:on-connect</font> <em>list-credentials</em> <em>fn-callback</em>)</b><br/>
+<b>parameter: </b><em>list-credentials</em> - a list of parameters to pass to Mysql:connect<br/>
+<b>parameter: </b><em>fn-callback</em> - a function to call with the database connection<br/>
+ <p>Connects to a MySQL server using <em>list-credentials</em> and calls
+ <em>fn-callback</em> using the Mysql instance as the first argument. If an
+ error occurred attempting connection, the error string is passed as the
+ second parameter. The minimum contents of <em>list-credentials</em> must be
+ '(<em>str-host</em> <em>str-username</em> <em>str-password</em> <em>str-database</em>).</p>
+ <p>The connection is automatically freed when mysql:on-connect returns.</p>
+<b>example:</b><blockquote><pre> (mysql:on-connect '("localhost" "user" "secret" "my_database")
+   (lambda (db err)
+     (if err
+       (println "Error! " err)
+       (println "Success! " db))))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="mysql_row-iter"></a><h3><font color=#CC0000>mysql:row-iter</font></h3>
+<b>syntax: (<font color=#CC0000>mysql:row-iter</font> <em>Mysql-instance</em> <em>str-sql</em> <em>bool-as-assoc</em> <em>fn-callback</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - a connect instance of the Mysql class<br/>
+<b>parameter: </b><em>str-sql</em> - a sql statement<br/>
+<b>parameter: </b><em>bool-as-assoc</em> - flags whether or not to pass rows as regular or association lists<br/>
+<b>parameter: </b><em>fn-callback</em> - a function to call for each row returned by the query<br/>
+ <p>Iterates over the results of a query, passing a row at a time to
+ <em>fn-callback</em>. The MysqlResult is automatically freed. The return value
+ of mysql:row-iter is the result of the last call to <em>fn-callback</em>.</p>
+ <p>Note that each row is called with MysqlResult:fetch-row to avoid building
+ intermediate lists.</p>
+<b>example:</b><blockquote><pre> (mysql:on-connect '("localhost" "user" "secret" "my_database")
+   (lambda (db err)
+     (if err
+       (println "Error! " err)
+       (mysql:row-iter db "SELECT * FROM some_table" true
+         (lambda (row) (println row))))))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="mysql_row-map"></a><h3><font color=#CC0000>mysql:row-map</font></h3>
+<b>syntax: (<font color=#CC0000>mysql:row-map</font> <em>Mysql-instance</em> <em>str-sql</em> <em>bool-as-assoc</em> <em>fn-callback</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - a connect instance of the Mysql class<br/>
+<b>parameter: </b><em>str-sql</em> - a sql statement<br/>
+<b>parameter: </b><em>bool-as-assoc</em> - flags whether or not to pass rows as regular or association lists<br/>
+<b>parameter: </b><em>fn-callback</em> - a function to apply to each row returned by the query<br/>
+ <p>Maps <em>fn-callback</em> over each row returned by querying <em>Mysql-instance</em>
+ with <em>str-sql</em>. Memory used by the MysqlResult is automatically freed.
+ Returns a list of the result of applying <em>fn-callback</em> to each row.</p>
+<b>example:</b><blockquote><pre> (mysql:on-connect '("localhost" "user" "secret" "my_database")
+   (lambda (db err)
+     (if err
+       (println "Error! " err)
+       (mysql:row-iter db "SELECT * FROM some_table" true first))))</pre></blockquote>
+<br/><br/><center>&sect;</center><br/>
+<a name="mysql_reduce-results"></a><h3><font color=#CC0000>mysql:reduce-results</font></h3>
+<b>syntax: (<font color=#CC0000>mysql:reduce-results</font> <em>Mysql-instance</em> <em>str-sql</em> <em>bool-as-assoc</em> <em>fn-callback</em>)</b><br/>
+<b>parameter: </b><em>Mysql-instance</em> - a connect instance of the Mysql class<br/>
+<b>parameter: </b><em>str-sql</em> - a sql statement<br/>
+<b>parameter: </b><em>bool-as-assoc</em> - flags whether or not to pass rows as regular or association lists<br/>
+<b>parameter: </b><em>fn-callback</em> - a function to be applied in reducing the results of the query<br/>
+ <p>Reduces the results of the query by applying <em>fn-callback</em> successively
+ to slices of the list of rows from the left.  On the first call to
+ <em>fn-callback</em>, the arguments will be a number of rows equal to the number of
+ parameters that <em>fn-callback</em> accepts. On each subsequent call, the first
+ parameter will be replaced by the result of the previous call. See the
+ <a href="http://www.newlisp.org/newlisp_manual.html#apply">apply&nbsp;function</a>  for a more detailed description of the mechanics of apply/reduce. The return
+ value is the result of the final application of <em>fn-callback</em>.</p>
+<b>example:</b><blockquote><pre> (mysql:on-connect '("localhost" "user" "secret" "my_database")
+   (lambda (db err)
+     (if err
+       (println "Error! " err)
+       (mysql:row-reduce db "SELECT * FROM some_table" true
+         (lambda (row-1 row-2)
+           (+ (if (list? row-1) (first row-1) row-1) (first row-2)))))))</pre></blockquote>
+
+<br/><br/><center>- &part; -</center><br/>
+<center><font face='Arial' size='-2' color='#444444'>
+generated with <a href="http://newlisp.org">newLISP</a>&nbsp;
+and <a href="http://newlisp.org/newLISPdoc.html">newLISPdoc</a>
+</font></center>
+</blockquote>
+</body>
+</html>
