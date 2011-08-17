@@ -1,5 +1,5 @@
 ;; @module XML
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 2.1
 ;; @location http://static.artfulcode.net/newlisp/xml.lsp
 ;; @package http://static.artfulcode.net/newlisp/xml.qwerty

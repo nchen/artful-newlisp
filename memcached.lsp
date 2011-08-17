@@ -1,5 +1,5 @@
 ;; @module memcached
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 0.3
 ;; @location http://static.artfulcode.net/newlisp/memcached.lsp
 ;; @package http://static.artfulcode.net/newlisp/memcached.qwerty

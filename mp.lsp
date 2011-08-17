@@ -1,5 +1,5 @@
 ;; @module MP
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 1.1
 ;; @location http://static.artfulcode.net/newlisp/mp.lsp
 ;; @package http://static.artfulcode.net/newlisp/mp.qwerty

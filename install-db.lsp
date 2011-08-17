@@ -2,7 +2,7 @@
 (context 'packages)
 
 (set '_acode '(MAIN:repository (MAIN:title "Artful Code") (MAIN:identifier "acode") 
-  (MAIN:contact "Jeff Ober <jeffober@gmail.com>") 
+  (MAIN:contact "Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>") 
   (MAIN:version 1000) 
   (MAIN:module (MAIN:title "csv") (MAIN:description "A simple parser and serialization utility for delimited text.") 
    (MAIN:url "http://static.artfulcode.net/newlisp/csv.lsp") 

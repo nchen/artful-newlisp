@@ -1,5 +1,5 @@
 ;; @module Response
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 1.2.1
 ;; @location http://static.artfulcode.net/newlisp/response.lsp
 ;; @package http://static.artfulcode.net/newlisp/response.qwerty

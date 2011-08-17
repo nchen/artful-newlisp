@@ -1,5 +1,5 @@
 ;; @module Json
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 2.0
 ;; @location http://static.artfulcode.net/newlisp/json.lsp
 ;; @package http://static.artfulcode.net/newlisp/json.qwerty

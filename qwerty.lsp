@@ -1,5 +1,5 @@
 ;; @module qwerty
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 1.0
 ;; @location http://static.artfulcode.net/newlisp/qwerty.lsp
 ;; @description Provides a dependency-managing library loading mechanism (requires newlisp 10)

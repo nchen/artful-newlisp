@@ -1,5 +1,5 @@
 ;; @module matching
-;; @author Jeff Ober <jeffober@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 1.0
 ;; @location http://static.artfulcode.net/newlisp/matching.lsp
 ;; @package http://static.artfulcode.net/newlisp/matching.qwerty

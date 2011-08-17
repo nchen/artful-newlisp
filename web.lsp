@@ -1,6 +1,6 @@
 #!/usr/bin/newlisp
 ;; @module Web
-;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
+;; @author Jeff Ober <jeffober@gmail.com>, Kanen Flowers <kanendosei@gmail.com>, Kanen Flowers <kanendosei@gmail.com>
 ;; @version 0.3.2
 ;; @location http://www.ScruffyThinking.com/artful
 ;; @package https://github.com/LifeZero/artful-newlisp/blob/master/web.qwerty
