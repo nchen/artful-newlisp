@@ -170,9 +170,9 @@
 ;; double quotes, ampersands, and left and right angle brackets
 ;; ('&quot;', '&apos;', '&amp;', '&lt;', and '&gt;').</p>
 (define (escape str)
+  (replace {&} str {&amp;})
   (replace {"} str {&quot;})
   (replace {'} str {&apos;})
-  (replace {&} str {&amp;})
   (replace {<} str {&lt;})
   (replace {>} str {&gt;})
   str)
@@ -674,11 +674,9 @@
 (if-not (context? CGI)
   ;; CGI module not present; read and parse the POST data ourselves
   (let ((post "") (buffer ""))
-   (unless (zero? (peek (device)))
-    (while (read-buffer (device) buffer POST_LIMIT)
-     (write-buffer post buffer)))
-
-   (setf POST (when post (parse-query post))))
+    (if (true? (env "CONTENT_LENGTH"))
+      (read (device) post (integer (env "CONTENT_LENGTH"))))
+    (setf POST (when post (parse-query post))))
 
 ;This will replace the above line once mim-decode actually works.
 ;(setf POST
